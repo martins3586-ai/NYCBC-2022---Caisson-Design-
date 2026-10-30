@@ -103,6 +103,7 @@ h2{display:inline-block;background:var(--sheet);border-radius:6px;padding:3px 8p
 .cklist:empty{display:none}
 .ck{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);border-left:3px solid var(--ok);background:color-mix(in srgb,var(--sheet) 70%,transparent)}
 .ck.bad{border-left-color:var(--warn)}
+.ck.fail{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad-bg) 70%,transparent)}
 .ck.info{border-left-color:var(--line)}
 .cknote{font-size:12px;line-height:1.4;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:8px 10px}
 .ck-l{font-size:13px;line-height:1.3}
@@ -434,16 +435,17 @@ const verdict=(r)=>{const ok=r<=1;return `<div class="tile verdict ${ok?"ok":"ba
 // Layout check helpers: each check is label, actual value, comparison, limit
 const CK=(label,val,op,lim,unit="in",note="")=>{const ok=op==="≥"?val>=lim-1e-9:op==="≤"?val<=lim+1e-9:op==="<"?val<lim:val>lim;
   return {label,ok,act:Number.isFinite(val)?f(val,2)+" "+unit:"—",req:op+" "+f(lim,2)+" "+unit+(note?" ("+note+")":"")}};
-const ckPill=ok=>`<span class="pill ${ok?"ok":"warn"}">${ok?"OK":"review"}</span>`;
-const ckTable=list=>list.map(c=>c.info?`<div class="ck info"><div class="ck-l">${c.label}</div><div class="ck-v"><span><b>${c.act}</b></span>${c.val<3.75?'<span class="pill warn">see note</span>':""}</div></div>`:`<div class="ck ${c.ok?"":"bad"}"><div class="ck-l">${c.label}</div><div class="ck-v"><span><b>${c.act}</b> <span class="ck-op">${c.req}</span></span>${ckPill(c.ok)}</div></div>`).join("");
-const ckRows=list=>list.map(c=>`<tr><td>${c.label}</td><td class="f">required ${c.req}</td><td class="n">${c.act} ${ckPill(c.ok)}</td></tr>`).join("");
+// failText: a check can name its own fix and show it in red instead of the default "review"
+const ckPill=(ok,failText)=>ok?`<span class="pill ok">OK</span>`:failText?`<span class="pill bad">${failText}</span>`:`<span class="pill warn">review</span>`;
+const ckTable=list=>list.map(c=>c.info?`<div class="ck info"><div class="ck-l">${c.label}</div><div class="ck-v"><span><b>${c.act}</b></span>${c.val<3.75?'<span class="pill warn">see note</span>':""}</div></div>`:`<div class="ck ${c.ok?"":c.failText?"fail":"bad"}"><div class="ck-l">${c.label}</div><div class="ck-v"><span><b>${c.act}</b> <span class="ck-op">${c.req}</span></span>${ckPill(c.ok,c.failText)}</div></div>`).join("");
+const ckRows=list=>list.map(c=>`<tr><td>${c.label}</td><td class="f">required ${c.req}</td><td class="n">${c.act} ${ckPill(c.ok,c.failText)}</td></tr>`).join("");
 function calc(){
   const useCore=v("useCore"), useBar=v("useBar");
   $("coreBox").hidden=!useCore; $("studBox").hidden=!useCore; $("barBox").hidden=!useBar; $("studSec").hidden=!useCore;
   $("reinfHint").textContent=useCore&&useBar?"Core and threadbar together is less common. Check the layout below.":(!useCore&&!useBar?"No reinforcement: plain concrete plus casing.":"");
   const shT=SHAPES.find(r=>r[0]===$("coreName").value), sh=useCore?shT:null, ac=$("Acore");
   const limB=Math.min(v("Dshaft")-2*v("tcase"),v("Dsock"));
-  if(shT){ac.disabled=true;ac.value=shT[1];$("AcoreNote").textContent="from AISC table";const dg=Math.hypot(shT[2],shT[3]);$("coreDimTxt").textContent=f(shT[2],2)+" × "+f(shT[3],2)+" in";$("coreDims").innerHTML=ckTable([CK("Core diagonal",dg,"<",limB,"in","smaller of casing ID and socket")]);}
+  if(shT){ac.disabled=true;ac.value=shT[1];$("AcoreNote").textContent="from AISC table";const dg=Math.hypot(shT[2],shT[3]);$("coreDimTxt").textContent=f(shT[2],2)+" × "+f(shT[3],2)+" in";$("coreDims").innerHTML=ckTable([Object.assign(CK("Core diagonal",dg,"<",limB,"in","smaller of casing ID and socket"),{failText:"Reduce Core Beam to Fit"})]);}
   else{ac.disabled=false;$("AcoreNote").textContent="enter area";$("coreDimTxt").textContent="—";$("coreDims").innerHTML="";}
   const AcE=useCore?v("Acore"):0;
   // threadbar
