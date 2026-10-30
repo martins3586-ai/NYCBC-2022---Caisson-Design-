@@ -227,7 +227,7 @@ h1 .ed{font-size:.62em;font-weight:600;color:var(--accent);margin-left:6px;lette
 
   <fieldset><legend>Service loads (ASD)</legend>
     <div class="row"><label for="PS">Service load<small>dead + live</small></label><input id="PS" type="number" value="1100"><span class="unit">kip</span></div>
-    <div class="row"><label for="PO">Other compression<small>wind/seismic, if governing</small></label><input id="PO" type="number" value="0"><span class="unit">kip</span></div>
+    <div class="row"><label for="PO">Transient loads<small>wind, seismic or other</small></label><input id="PO" type="number" value="0"><span class="unit">kip</span></div>
     <div class="row"><label for="PDD">Downdrag<small>negative skin friction in overburden</small></label><input id="PDD" type="number" value="0"><span class="unit">kip</span></div>
     <div class="row"><label for="PU">Net uplift</label><input id="PU" type="number" value="0"><span class="unit">kip</span></div>
   </fieldset>
@@ -546,7 +546,7 @@ function calc(){
     tile("Compression length",f(Lc,2),"ft")+
     tile("Tension length",f(Lt,2),"ft");
   $("geoCalc").innerHTML=head+
-    row("Compression demand","service + other + downdrag",f(Ptot,0),"kip")+
+    row("Compression demand","service + transient + downdrag",f(Ptot,0),"kip")+
     (v("useBase")? row("Allowable end bearing credit, tip Class "+clsT,f(qt,0)+" tsf × 2 × "+f(Ab,2)+" ft²",f(Qb,0),"kip")+row("Load to skin friction","P − Qb",f(Pc,0),"kip"):"")+
     row("Ultimate unit skin friction, compression","Class "+cls,f(fsu,0),"psi")+
     row("Socket perimeter","π · "+f(Ds,1)+" in",f(perim,1),"in")+
@@ -590,7 +590,7 @@ function calc(){
     row("Area inside casing","π·"+f(Do-2*t,2)+"²/4",f(Ain,1),"in²")+
     row("Net concrete area","Ain − core − threadbar",f(Ac1,1),"in²")+mat(Ac1,Acase)+
     row("Allowable axial capacity","Σ",f(Q1,0),"kip","sum")+
-    row("Demand at top","service + other",f(P,0),"kip")+
+    row("Demand at top","service + transient",f(P,0),"kip")+
     row("Demand / capacity","",`<span class="pill ${r1<=1?"ok":"bad"}">${f(r1,2)}</span>`,"","sum");
   $("strSock").innerHTML=head+
     row("Socket area","π·"+f(Ds,1)+"²/4",f(As,1),"in²")+
