@@ -4,6 +4,7 @@ Design checks for rock-socketed drilled caissons to the 2022 New York City Build
 
 ## What it does
 
+- **Loads:** service load (dead + live), other compression, downdrag and net uplift.
 - **Geotechnical:** required rock socket length from skin friction (rock class along the socket) with optional end bearing (rock class at the tip), FS 2 compression / FS 3 tension. Governing length is the largest of the geotechnical length, the NYC BC 1812.7.3 minimum, shear stud transfer length and threadbar development length.
 - **Structural:** allowable axial capacity of the cased shaft and uncased socket per Table 1810.8 (concrete, AISC W/HP steel core, permanent casing, threadbar).
 - **Reinforcement:** steel core with web and/or flange shear studs; Nucor Skyline Grade 80 threadbar as a central bundle (up to 4 bars) or one or two circular rings (bundles up to 3), with coupler layout checks.

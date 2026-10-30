@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Rock-socketed caisson design checks to the 2022 NYC Building Code: socket length, axial capacity, shear studs, threadbar development and a PDF calc package.">
+<meta name="theme-color" content="#f6f7f4">
+<meta name="apple-mobile-web-app-title" content="Caisson Calc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>NYC Caisson Calc - 2022 Edition</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,20 +19,14 @@
 <style>
 /* Layout: calc-sheet. Sticky tab strip, stacked input groups in a 2-col grid that collapses to 1, result tiles above the working */
 :root{
-  --bg:#eef0ec; --sheet:#fbfcfa; --ink:#1d2433; --muted:#5d6676; --line:#cfd4cc;
-  --accent:#2f4b8a; --accent-soft:#dde4f3; --rock:#b9b2a3; --soil:#d8cdb4; --conc:#c9ccd1;
-  --ok:#2d7a4a; --ok-bg:#dcefe2; --bad:#b23a2b; --bad-bg:#f6dcd7; --warn:#8a6512; --warn-bg:#f5ebcf;
-  --g-soil:#e4d9c1; --g-soil-dot:#c9b994; --g-rock:#cbc6ba; --g-rock-line:#ada697; --g-water:#4a74b5;
+  --bg:#f6f7f4; --sheet:#ffffff; --ink:#1d2433; --muted:#5f6878; --line:#d9ddd5;
+  --accent:#2f5aa8; --accent-soft:#e3eaf7; --rock:#cfc9bd; --soil:#e6dcc6; --conc:#d9dce0;
+  --ok:#2d7a4a; --ok-bg:#e1f2e6; --bad:#b23a2b; --bad-bg:#f9e2de; --warn:#8a6512; --warn-bg:#f8efd6;
+  --g-soil:#f3ecdc; --g-soil-dot:#ddd0b0; --g-rock:#e4e1d9; --g-rock-line:#c9c3b6; --g-water:#4a74b5;
   --display:"Archivo","Helvetica Neue",Arial,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#14171d; --sheet:#1c2028; --ink:#e3e6ec; --muted:#97a0b0; --line:#323846;
-  --accent:#8fa9e6; --accent-soft:#26314a; --rock:#6c665b; --soil:#5a5040; --conc:#5c616b;
-  --ok:#7fcf9a; --ok-bg:#1d3326; --g-soil:#221f19; --g-soil-dot:#3a3426; --g-rock:#1b1c20; --g-rock-line:#30323a; --g-water:#6f93cf; --bad:#f08b7c; --bad-bg:#3b211d; --warn:#e3c06a; --warn-bg:#3a3119; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#14171d; --sheet:#1c2028; --ink:#e3e6ec; --muted:#97a0b0; --line:#323846;
-  --accent:#8fa9e6; --accent-soft:#26314a; --rock:#6c665b; --soil:#5a5040; --conc:#5c616b;
-  --ok:#7fcf9a; --ok-bg:#1d3326; --g-soil:#221f19; --g-soil-dot:#3a3426; --g-rock:#1b1c20; --g-rock-line:#30323a; --g-water:#6f93cf; --bad:#f08b7c; --bad-bg:#3b211d; --warn:#e3c06a; --warn-bg:#3a3119; color-scheme:dark}
+/* Light-only by design: the interface stays light even when the device is in dark mode */
 *{box-sizing:border-box}
 body{background:var(--g-rock);color:var(--ink);font-family:var(--display);font-size:14px;line-height:1.45}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--sheet)}
@@ -88,7 +90,7 @@ h2{font-size:15px;margin:20px 0 8px;font-weight:600}
 .bar-t{height:10px;background:var(--bg);border-radius:5px;overflow:hidden}
 .bar-f{height:100%;background:var(--muted);border-radius:5px}
 .bar-f.gov{background:var(--accent)}
-fieldset{background:color-mix(in srgb,var(--sheet) 50%,transparent);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+fieldset{background:color-mix(in srgb,var(--sheet) 72%,transparent);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
 input,select{background:color-mix(in srgb,var(--bg) 50%,transparent)}
 input:disabled{background:color-mix(in srgb,var(--bg) 30%,transparent)}
 #ground{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:block}
@@ -221,8 +223,7 @@ h1 .ed{font-size:.62em;font-weight:600;color:var(--accent);margin-left:6px;lette
   </fieldset>
 
   <fieldset><legend>Service loads (ASD)</legend>
-    <div class="row"><label for="PD">Dead load</label><input id="PD" type="number" value="800"><span class="unit">kip</span></div>
-    <div class="row"><label for="PL">Live load</label><input id="PL" type="number" value="300"><span class="unit">kip</span></div>
+    <div class="row"><label for="PS">Service load<small>dead + live</small></label><input id="PS" type="number" value="1100"><span class="unit">kip</span></div>
     <div class="row"><label for="PO">Other compression<small>wind/seismic, if governing</small></label><input id="PO" type="number" value="0"><span class="unit">kip</span></div>
     <div class="row"><label for="PDD">Downdrag<small>negative skin friction in overburden</small></label><input id="PDD" type="number" value="0"><span class="unit">kip</span></div>
     <div class="row"><label for="PU">Net uplift</label><input id="PU" type="number" value="0"><span class="unit">kip</span></div>
@@ -413,10 +414,12 @@ const SHAPES=[["W44X335",98.5,44.0,15.9,1.03,1.77,2.56],["W44X290",85.4,43.6,15.
 </script>
 <script>
 const $=id=>document.getElementById(id);
-const KEY="rsc-check-v20";
+// Older saves had separate dead and live loads
+function migrate(o){if(o&&!("PS" in o)&&("PD" in o||"PL" in o)){o=Object.assign({},o);o.PS=String((parseFloat(o.PD)||0)+(parseFloat(o.PL)||0));}return o;}
+const KEY="rsc-check-v21";
 const fields=[...document.querySelectorAll("input,select")].filter(e=>e.id&&e.type!=="file"&&e.id!=="dsNewName");
 const defaults={}; fields.forEach(e=>defaults[e.id]=e.type==="checkbox"?e.checked:e.value);
-try{const s=JSON.parse(localStorage.getItem(KEY)||"null"); if(s) fields.forEach(e=>{if(e.id in s){e.type==="checkbox"?e.checked=s[e.id]:e.value=s[e.id]}})}catch(_){}
+try{const s=migrate(JSON.parse(localStorage.getItem(KEY)||"null")); if(s) fields.forEach(e=>{if(e.id in s){e.type==="checkbox"?e.checked=s[e.id]:e.value=s[e.id]}})}catch(_){}
 const v=id=>{const e=$(id);return e.type==="checkbox"?e.checked:(parseFloat(e.value)||0)};
 const f=(x,d=1)=>Number.isFinite(x)?x.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
 const circ=d=>Math.PI*d*d/4;
@@ -506,7 +509,7 @@ function calc(){
     const pastTips=useW&&sL>(bf-tw)/2;
     stud={d:sd,L:sL,groups,tw,dd:d,clrWall,clrBar,pastTips,perLvl:groups.reduce((a,g)=>a+2*g.pos.length,0)};
   }
-  const P=v("PD")+v("PL")+v("PO"), Pdd=v("PDD"), Ptot=P+Pdd;
+  const P=v("PS")+v("PO"), Pdd=v("PDD"), Ptot=P+Pdd;
   // Geotech
   const Ds=v("Dsock"), Ab=circ(Ds)/144;
   const CL={"60":"1a","40":"1b","20":"1c","8":"1d","custom":"Geotech"};
@@ -540,7 +543,7 @@ function calc(){
     tile("Compression length",f(Lc,2),"ft")+
     tile("Tension length",f(Lt,2),"ft");
   $("geoCalc").innerHTML=head+
-    row("Compression demand","D + L + other + downdrag",f(Ptot,0),"kip")+
+    row("Compression demand","service + other + downdrag",f(Ptot,0),"kip")+
     (v("useBase")? row("Allowable end bearing credit, tip Class "+clsT,f(qt,0)+" tsf × 2 × "+f(Ab,2)+" ft²",f(Qb,0),"kip")+row("Load to skin friction","P − Qb",f(Pc,0),"kip"):"")+
     row("Ultimate unit skin friction, compression","Class "+cls,f(fsu,0),"psi")+
     row("Socket perimeter","π · "+f(Ds,1)+" in",f(perim,1),"in")+
@@ -584,7 +587,7 @@ function calc(){
     row("Area inside casing","π·"+f(Do-2*t,2)+"²/4",f(Ain,1),"in²")+
     row("Net concrete area","Ain − core − threadbar",f(Ac1,1),"in²")+mat(Ac1,Acase)+
     row("Allowable axial capacity","Σ",f(Q1,0),"kip","sum")+
-    row("Demand at top","D + L + other",f(P,0),"kip")+
+    row("Demand at top","service + other",f(P,0),"kip")+
     row("Demand / capacity","",`<span class="pill ${r1<=1?"ok":"bad"}">${f(r1,2)}</span>`,"","sum");
   $("strSock").innerHTML=head+
     row("Socket area","π·"+f(Ds,1)+"²/4",f(As,1),"in²")+
@@ -776,7 +779,7 @@ const PROJ_FIELDS=["proj","mark","jobNo","prepBy","chkBy"], LOCAL_DS="rsc-design
 let dsStore=null, dsItems=[], dsCur=null, dsSaved="", dsConfirm=null;
 const snapVals=()=>{const o={};fields.forEach(e=>o[e.id]=e.type==="checkbox"?e.checked:e.value);return o;};
 const sameVals=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-function applyVals(vals,keepProject){fields.forEach(e=>{if(!(e.id in vals))return;if(keepProject&&PROJ_FIELDS.includes(e.id))return;if(e.type==="checkbox")e.checked=!!vals[e.id];else e.value=vals[e.id];});
+function applyVals(vals,keepProject){vals=migrate(vals);fields.forEach(e=>{if(!(e.id in vals))return;if(keepProject&&PROJ_FIELDS.includes(e.id))return;if(e.type==="checkbox")e.checked=!!vals[e.id];else e.value=vals[e.id];});
   // dependent dropdowns may need a second pass after the first recalculation
   calc();fields.forEach(e=>{if(e.id in vals&&!(keepProject&&PROJ_FIELDS.includes(e.id))&&e.tagName==="SELECT")e.value=vals[e.id];});calc();}
 function dsStatus(){const cur=dsItems.find(d=>d.id===dsCur);$("dsName").textContent=cur?cur.name:"Unsaved design";
