@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Rock-socketed caisson design checks to the 2022 NYC Building Code: socket length, axial capacity, shear studs, threadbar development and a PDF calc package.">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>NYC Caisson Calc - 2022 Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: calc-sheet. Sticky tab strip, stacked input groups in a 2-col grid that collapses to 1, result tiles above the working */
+:root{
+  --bg:#eef0ec; --sheet:#fbfcfa; --ink:#1d2433; --muted:#5d6676; --line:#cfd4cc;
+  --accent:#2f4b8a; --accent-soft:#dde4f3; --rock:#b9b2a3; --soil:#d8cdb4; --conc:#c9ccd1;
+  --ok:#2d7a4a; --ok-bg:#dcefe2; --bad:#b23a2b; --bad-bg:#f6dcd7; --warn:#8a6512; --warn-bg:#f5ebcf;
+  --g-soil:#e4d9c1; --g-soil-dot:#c9b994; --g-rock:#cbc6ba; --g-rock-line:#ada697; --g-water:#4a74b5;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14171d; --sheet:#1c2028; --ink:#e3e6ec; --muted:#97a0b0; --line:#323846;
+  --accent:#8fa9e6; --accent-soft:#26314a; --rock:#6c665b; --soil:#5a5040; --conc:#5c616b;
+  --ok:#7fcf9a; --ok-bg:#1d3326; --g-soil:#221f19; --g-soil-dot:#3a3426; --g-rock:#1b1c20; --g-rock-line:#30323a; --g-water:#6f93cf; --bad:#f08b7c; --bad-bg:#3b211d; --warn:#e3c06a; --warn-bg:#3a3119; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14171d; --sheet:#1c2028; --ink:#e3e6ec; --muted:#97a0b0; --line:#323846;
+  --accent:#8fa9e6; --accent-soft:#26314a; --rock:#6c665b; --soil:#5a5040; --conc:#5c616b;
+  --ok:#7fcf9a; --ok-bg:#1d3326; --g-soil:#221f19; --g-soil-dot:#3a3426; --g-rock:#1b1c20; --g-rock-line:#30323a; --g-water:#6f93cf; --bad:#f08b7c; --bad-bg:#3b211d; --warn:#e3c06a; --warn-bg:#3a3119; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--g-rock);color:var(--ink);font-family:var(--display);font-size:14px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--sheet)}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;margin-bottom:14px}
+h1{font-size:22px;font-weight:800;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.code{font-family:var(--mono);font-size:12px;color:var(--muted)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;gap:4px;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:4px;margin-bottom:16px;overflow-x:auto}
+nav button{flex:1 1 0;min-width:max-content;font:600 13px var(--display);color:var(--muted);background:transparent;border:0;border-radius:6px;padding:9px 12px;cursor:pointer;display:flex;gap:8px;align-items:center;justify-content:center}
+nav button[aria-selected="true"]{background:var(--accent);color:var(--sheet)}
+nav button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)}
+nav button[aria-selected="true"] .dot{box-shadow:0 0 0 2px var(--sheet)}
+.wrap{width:100%}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:16px;align-items:start}
+fieldset{margin:0;border:1px solid var(--line);border-radius:8px;background:var(--sheet);padding:12px 14px 14px;min-width:0}
+legend{font:600 11px var(--display);text-transform:uppercase;letter-spacing:.08em;color:var(--accent);padding:0 6px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(76px,112px) 40px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)}
+.row:last-child{border-bottom:0}
+.row label{color:var(--ink);font-size:13px;min-width:0}
+.row small{display:block;color:var(--muted);font-size:11px}
+.unit{font-family:var(--mono);font-size:11px;color:var(--muted)}
+input,select{width:100%;font:400 13px var(--mono);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:6px 7px;text-align:right;font-variant-numeric:tabular-nums}
+select{text-align:left}
+input[type=checkbox]{width:18px;height:18px;justify-self:end;accent-color:var(--accent)}
+.row.wide{grid-template-columns:minmax(0,1fr) minmax(0,170px)}
+.row.wide .code{min-width:0;overflow-wrap:anywhere}
+#studFit{grid-column:1/-1;text-align:left!important}
+select{min-width:0;max-width:100%;text-overflow:ellipsis}
+.row.wide input{text-align:left}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.tile .v{font:600 20px var(--mono);font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .v span{font-size:12px;color:var(--muted);font-weight:400}
+.pill{display:inline-block;font:600 12px var(--mono);padding:3px 9px;border-radius:99px}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--bad-bg);color:var(--bad)}
+.tile.verdict{border-width:2px}
+.tile.verdict.ok{border-color:var(--ok)} .tile.verdict.bad{border-color:var(--bad)}
+.calc{background:var(--sheet);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+.calc table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+.calc th,.calc td{padding:7px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.calc th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.calc td.n{font-family:var(--mono);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.calc td.f{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.calc tr.sum td{font-weight:600;background:var(--accent-soft)}
+h2{font-size:15px;margin:20px 0 8px;font-weight:600}
+.note{font-size:12px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:8px 10px;margin-top:12px}
+.sketch{display:flex;justify-content:center;padding:8px 0}
+.sketch svg{max-width:100%;height:auto}
+.sign{margin-left:8px;font:600 13px var(--mono);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;padding:1px 8px;cursor:pointer;vertical-align:middle}
+#plan{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.xs{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;max-width:100%}
+.xs figcaption{display:flex;flex-direction:column;align-items:center;font-size:12px}
+.xs figcaption span{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.sum{display:flex;flex-direction:column;gap:6px;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:16px}
+.sum:empty{display:none}
+.bar-r{display:grid;grid-template-columns:120px minmax(0,1fr) 64px;gap:8px;align-items:center;font-size:12px}
+.bar-r b{font-family:var(--mono);text-align:right;font-weight:600}
+.bar-t{height:10px;background:var(--bg);border-radius:5px;overflow:hidden}
+.bar-f{height:100%;background:var(--muted);border-radius:5px}
+.bar-f.gov{background:var(--accent)}
+fieldset{background:color-mix(in srgb,var(--sheet) 50%,transparent);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+input,select{background:color-mix(in srgb,var(--bg) 50%,transparent)}
+input:disabled{background:color-mix(in srgb,var(--bg) 30%,transparent)}
+#ground{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:block}
+header{background:color-mix(in srgb,var(--sheet) 82%,transparent);border-radius:8px;padding:10px 12px}
+h2{display:inline-block;background:var(--sheet);border-radius:6px;padding:3px 8px}
+.ckhead{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin:12px 0 4px}
+.cklist{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.cklist:empty{display:none}
+.ck{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);border-left:3px solid var(--ok);background:color-mix(in srgb,var(--sheet) 70%,transparent)}
+.ck.bad{border-left-color:var(--warn)}
+.ck.info{border-left-color:var(--line)}
+.cknote{font-size:12px;line-height:1.4;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:8px 10px}
+.ck-l{font-size:13px;line-height:1.3}
+.ck-v{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:12px}
+.ck-v b{font-weight:600;font-size:13px}
+.ck-op{color:var(--muted)}
+.pill{white-space:nowrap}
+.cks{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px}
+.cks th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:left;font-weight:600;padding:3px 4px;border-bottom:1px solid var(--line)}
+.cks td{padding:5px 4px;border-bottom:1px dashed var(--line);vertical-align:top}
+.cks td.n{font-family:var(--mono);white-space:nowrap;text-align:right}
+.cks tr:last-child td{border-bottom:0}
+.btn.primary{background:var(--accent);color:var(--sheet);border-color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.exp{background:color-mix(in srgb,var(--sheet) 92%,transparent);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px}
+.exp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:16px}
+.exp-col{min-width:0}
+.exp-go{align-items:center}
+.logo-box{display:flex;align-items:center;justify-content:center;height:64px;border:1px dashed var(--line);border-radius:6px;background:#fff;margin-bottom:8px;color:#5d6676;font-size:12px}
+.logo-box img{max-height:52px;max-width:90%}
+.sr{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.note.scope{margin:0 0 16px;color:var(--ink);border-left:3px solid var(--warn)}
+h1 .ed{font-size:.62em;font-weight:600;color:var(--accent);margin-left:6px;letter-spacing:.02em;white-space:nowrap}
+.ds-now{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:6px 12px}
+.ds-now b{font-size:15px}
+.ds-list{display:flex;flex-direction:column;gap:6px}
+.ds-item{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--sheet) 70%,transparent)}
+.ds-item.cur{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.ds-item .meta{min-width:0}
+.ds-item .meta b{display:block;font-size:13px;overflow-wrap:anywhere}
+.ds-item .meta span{font:11px var(--mono);color:var(--muted)}
+.ds-item .actions{gap:6px}
+.btn.sm{padding:5px 9px;font-size:12px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.ds-empty{font-size:12px;color:var(--muted);padding:6px 2px}
+.hint{margin:6px 0 0;font-size:12px;color:var(--muted)}
+.sketch text{font:11px var(--mono);fill:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:600 12px var(--display);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer}
+@media (max-width:480px){
+  .row{grid-template-columns:minmax(0,1fr) 92px 36px;gap:6px}
+  .row.wide{grid-template-columns:1fr}
+  input,select{font-size:16px}
+  fieldset{padding:10px 10px 12px}
+  nav button{padding:9px 8px;font-size:12px}
+  h1{font-size:19px}
+  .tile .v{font-size:18px}
+}
+</style>
+</head>
+<body>
+
+<svg id="ground" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="pSoil" width="22" height="22" patternUnits="userSpaceOnUse">
+      <rect width="22" height="22" fill="var(--g-soil)"/>
+      <circle cx="4" cy="5" r="1.3" fill="var(--g-soil-dot)"/><circle cx="15" cy="9" r="0.9" fill="var(--g-soil-dot)"/>
+      <circle cx="9" cy="17" r="1.6" fill="var(--g-soil-dot)"/><circle cx="19" cy="19" r="0.8" fill="var(--g-soil-dot)"/>
+      <circle cx="12" cy="2" r="0.7" fill="var(--g-soil-dot)"/>
+    </pattern>
+    <pattern id="pRock" width="180" height="90" patternUnits="userSpaceOnUse">
+      <rect width="180" height="90" fill="var(--g-rock)"/>
+      <path d="M0 22 C40 18 70 27 110 21 S160 24 180 22 M0 64 C30 60 80 68 120 62 S165 66 180 64" stroke="var(--g-rock-line)" stroke-width="1.1" fill="none"/>
+      <path d="M34 22 L42 63 M96 23 L88 63 M150 22 L158 64 M18 64 L12 90 M70 66 L78 90 M130 63 L124 90 M60 0 L54 20 M120 0 L128 22" stroke="var(--g-rock-line)" stroke-width="0.9" fill="none"/>
+      <path d="M52 34 l12 9 M110 40 l9 -7 M20 76 l8 6 M146 74 l-7 8 M84 8 l6 6" stroke="var(--g-rock-line)" stroke-width="0.7" fill="none" opacity="0.8"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#pRock)"/>
+  <path id="gSoil" fill="url(#pSoil)"/>
+  <path id="gTor" fill="none" stroke="var(--g-rock-line)" stroke-width="2" stroke-dasharray="10 6"/>
+  <g id="gWater"></g>
+</svg>
+<div class="wrap">
+<header>
+  <div><h1>NYC Caisson Calc <span class="ed">2022 Edition</span></h1><div class="code">Rock-socketed caissons · NYC Building Code Ch. 18 · ASD · kip-in-ft</div></div>
+  <div class="actions"><button class="btn" id="dsOpen" type="button" aria-expanded="false" aria-controls="dsPanel">Saved designs</button><button class="btn primary" id="expOpen" type="button" aria-expanded="false" aria-controls="expPanel">Export calc package</button><button class="btn" id="reset" type="button">Reset to example</button></div>
+</header>
+<section id="dsPanel" class="exp" hidden aria-label="Saved designs and templates">
+  <div class="ds-now"><div><div class="ckhead" style="margin:0">Current design</div><b id="dsName">Unsaved design</b> <span class="pill warn" id="dsDirty" hidden>unsaved changes</span></div>
+    <span class="hint" id="dsWhere" style="margin:0"></span></div>
+  <div class="row wide"><label for="dsNewName">Name<small>for a new design or template</small></label><input id="dsNewName" type="text" value="" placeholder="e.g. C-1 Tower A"></div>
+  <div class="actions"><button class="btn primary" id="dsSave" type="button">Save changes</button><button class="btn" id="dsSaveNew" type="button">Save as new design</button><button class="btn" id="dsSaveTpl" type="button">Save as template</button><button class="btn" id="dsNew" type="button">Start new from example</button></div>
+  <span class="hint" id="dsMsg" role="status" style="margin:0"></span>
+  <div class="exp-grid">
+    <div class="exp-col"><div class="ckhead">Designs</div><div class="ds-list" id="dsListD"></div></div>
+    <div class="exp-col"><div class="ckhead">Templates<small class="hint" style="margin-left:6px;text-transform:none;letter-spacing:0">start a new design from these; project details are left blank</small></div><div class="ds-list" id="dsListT"></div></div>
+  </div>
+</section>
+<section id="expPanel" class="exp" hidden aria-label="Export calculation package">
+  <div class="exp-grid">
+    <div class="exp-col">
+      <div class="row wide"><label for="jobNo">Job number</label><input id="jobNo" type="text" value=""></div>
+      <div class="row wide"><label for="prepBy">Prepared by</label><input id="prepBy" type="text" value=""></div>
+      <div class="row wide"><label for="chkBy">Checked by</label><input id="chkBy" type="text" value=""></div>
+    </div>
+    <div class="exp-col">
+      <div class="ckhead">Logo, bottom left of every page</div>
+      <div class="logo-box"><img id="logoPrev" alt="Logo preview" hidden><span id="logoNone">No logo added</span></div>
+      <div class="actions"><label class="btn" for="logoFile">Choose logo image</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/svg+xml" class="sr"><button class="btn" id="logoClear" type="button" hidden>Remove logo</button></div>
+      <p class="hint">PNG, JPG or SVG. Kept in this browser for future exports.</p>
+    </div>
+  </div>
+  <div class="actions exp-go"><button class="btn primary" id="expPdf" type="button">Download PDF</button><span class="hint" id="expMsg" role="status"></span></div>
+</section>
+
+<nav role="tablist">
+  <button role="tab" data-tab="inputs" aria-selected="true">Materials &amp; inputs</button>
+  <button role="tab" data-tab="geotech" aria-selected="false"><i class="dot" id="dot-geo"></i>Geotechnical</button>
+  <button role="tab" data-tab="structural" aria-selected="false"><i class="dot" id="dot-str"></i>Structural</button>
+</nav>
+
+<p class="note scope" role="note"><b>Scope:</b> This tool checks the axial capacity of a single caisson only. Lateral capacity and group effects are not checked and must be evaluated separately.</p>
+
+<!-- INPUTS -->
+<section id="tab-inputs" role="tabpanel">
+<div class="grid">
+  <fieldset><legend>Project</legend>
+    <div class="row wide"><label for="proj">Project</label><input id="proj" type="text" value="Example — verify all values"></div>
+    <div class="row wide"><label for="mark">Caisson mark</label><input id="mark" type="text" value="C-1"></div>
+  </fieldset>
+
+  <fieldset><legend>Service loads (ASD)</legend>
+    <div class="row"><label for="PD">Dead load</label><input id="PD" type="number" value="800"><span class="unit">kip</span></div>
+    <div class="row"><label for="PL">Live load</label><input id="PL" type="number" value="300"><span class="unit">kip</span></div>
+    <div class="row"><label for="PO">Other compression<small>wind/seismic, if governing</small></label><input id="PO" type="number" value="0"><span class="unit">kip</span></div>
+    <div class="row"><label for="PDD">Downdrag<small>negative skin friction in overburden</small></label><input id="PDD" type="number" value="0"><span class="unit">kip</span></div>
+    <div class="row"><label for="PU">Net uplift</label><input id="PU" type="number" value="0"><span class="unit">kip</span></div>
+  </fieldset>
+
+  <fieldset><legend>Geometry</legend>
+    <div class="row"><label for="Dshaft">Shaft (casing) OD</label><input id="Dshaft" type="number" value="36"><span class="unit">in</span></div>
+    <div class="row"><label for="Dsock">Socket diameter</label><input id="Dsock" type="number" value="32"><span class="unit">in</span></div>
+    <div class="row"><label for="Egs">Ground surface elevation</label><input id="Egs" type="number" value="10"><span class="unit">ft</span></div>
+    <div class="row"><label for="Etor">Top of rock elevation</label><input id="Etor" type="number" value="-25"><span class="unit">ft</span></div>
+    <div class="row"><label for="GWT">Groundwater elevation</label><input id="GWT" type="number" value="-10"><span class="unit">ft</span></div>
+    <div class="row"><label for="Lob">Overburden length<small>ground surface − top of rock</small></label><input id="Lob" type="number" value="35" disabled><span class="unit">ft</span></div>
+    <div class="row"><label for="Lcase">Casing seated into rock</label><input id="Lcase" type="number" value="1"><span class="unit">ft</span></div>
+  </fieldset>
+
+  <fieldset><legend>Concrete</legend>
+    <div class="row"><label for="fc">f'c</label><input id="fc" type="number" value="6" step="0.5"><span class="unit">ksi</span></div>
+  </fieldset>
+
+  <fieldset><legend>Permanent casing</legend>
+    <div class="row"><label for="casePerm">Casing is permanent<small>temporary casing gets no credit</small></label><input id="casePerm" type="checkbox" checked><span></span></div>
+    <div class="row"><label for="tcase">Wall thickness</label><input id="tcase" type="number" value="0.5" step="0.0625"><span class="unit">in</span></div>
+    <div class="row"><label for="tcorr">Corrosion allowance</label><input id="tcorr" type="number" value="0.0625" step="0.0625"><span class="unit">in</span></div>
+    <div class="row"><label for="Fycase">Casing Fy</label><input id="Fycase" type="number" value="50"><span class="unit">ksi</span></div>
+  </fieldset>
+
+  <fieldset><legend>Reinforcement type</legend>
+    <div class="row"><label for="useCore">Steel core (W or HP shape)</label><input id="useCore" type="checkbox" checked><span></span></div>
+    <div class="row"><label for="useBar">Threadbar</label><input id="useBar" type="checkbox"><span></span></div>
+    <p class="hint" id="reinfHint"></p>
+  </fieldset>
+
+  <fieldset id="coreBox"><legend>Steel core</legend>
+    <div class="row wide"><label for="coreName">Core section<small>AISC W and HP shapes</small></label><select id="coreName"></select></div>
+    <div class="row wide" id="coreInfo"><label>d × bf</label><span class="code" id="coreDimTxt" style="text-align:right">—</span></div>
+    <div class="cklist" id="coreDims"></div>
+    <div class="row"><label for="Acore">Core area<small id="AcoreNote">from AISC table</small></label><input id="Acore" type="number" value="91.4" step="0.1" disabled><span class="unit">in²</span></div>
+    <div class="row"><label for="Fycore">Core Fy</label><input id="Fycore" type="number" value="50"><span class="unit">ksi</span></div>
+  </fieldset>
+
+  <fieldset id="studBox"><legend>Core shear studs</legend>
+    <div class="row"><label for="studWeb">Studs on web<small>both faces</small></label><input id="studWeb" type="checkbox" checked><span></span></div>
+    <div class="row" id="studPerRow"><label for="studPer">Studs per row, each web face</label><input id="studPer" type="number" value="3" min="1" step="1"><span class="unit">ea</span></div>
+    <div class="row"><label for="studFl">Studs on flanges<small>outside faces</small></label><input id="studFl" type="checkbox"><span></span></div>
+    <div class="row" id="studPerFRow"><label for="studPerF">Studs per row, each flange</label><input id="studPerF" type="number" value="2" min="1" step="1"><span class="unit">ea</span></div>
+    <div class="row wide"><label for="studDia">Stud diameter</label>
+      <select id="studDia"><option value="0.5">½″</option><option value="0.625">⅝″</option><option value="0.75" selected>¾″</option><option value="0.875">⅞″</option></select></div>
+    <div class="row"><label for="studL">Stud length after welding</label><input id="studL" type="number" value="5" step="0.125"><span class="unit">in</span></div>
+    <div class="row"><label for="studEdge">Min. stud edge distance<small>flange studs to flange tips; web studs to inside face of flanges</small></label><input id="studEdge" type="number" value="1.5" step="0.25"><span class="unit">in</span></div>
+    <div class="row"><label for="studFu">Stud Fu</label><input id="studFu" type="number" value="65"><span class="unit">ksi</span></div>
+    <div class="row"><label for="studOm">Ω for stud shear<small>AISC 360 I8.3a</small></label><input id="studOm" type="number" value="2.31" step="0.01"><span class="unit">Ω</span></div>
+    <div class="row"><label for="studPitch">Row spacing along core</label><input id="studPitch" type="number" value="6" step="0.5"><span class="unit">in</span></div>
+    <div class="row wide"><label for="studMode">Force transferred by studs</label>
+      <select id="studMode"><option value="core" selected>Core share of socket demand</option><option value="share">Non-core share of top load</option><option value="full">Full top load</option><option value="user">User value</option></select></div>
+    <div class="row" id="studVRow"><label for="studV">Transfer force</label><input id="studV" type="number" value="500"><span class="unit">kip</span></div>
+    <div class="row"><label for="studCov">Min. clearance at stud tips<small>to casing, socket, couplers</small></label><input id="studCov" type="number" value="1.5" step="0.25"><span class="unit">in</span></div>
+    <div class="row wide"><label>Stud check</label><span class="code" id="studFit" style="text-align:right">—</span></div>
+  </fieldset>
+
+  <fieldset id="barBox"><legend>Threadbar</legend>
+    <div class="row wide"><label for="barArr">Arrangement</label>
+      <select id="barArr"><option value="central">Central bar or bundle</option><option value="circular" selected>Circular arrangement</option></select></div>
+    <div class="row wide" id="barSizeRow"><label for="barSize">Bar size<small>Nucor Skyline 2026 manual</small></label><select id="barSize"></select></div>
+    <div class="row" id="barNRow"><label for="barN" id="barNLbl">Number of bars</label><input id="barN" type="number" value="8" min="1" step="1"><span class="unit">ea</span></div>
+    <div class="row" id="barBRow"><label for="barB">Bars per bundle, outer ring<small>1 = single bars; max. 3</small></label><input id="barB" type="number" value="1" min="1" max="3" step="1"><span class="unit">ea</span></div>
+    <div class="row" id="barCircRow"><label for="barEdge">Min. edge distance<small>rock socket wall to coupler face</small></label><input id="barEdge" type="number" value="3" step="0.25"><span class="unit">in</span></div>
+    <div class="row wide" id="barCircOut"><label>Bar circle diameter<small>to bar centers, calculated</small></label><span class="code" id="barCircV" style="text-align:right">—</span></div>
+    <div class="row" id="barAbRow"><label for="barAb">Area per bar</label><input id="barAb" type="number" value="4.91" step="0.01" disabled><span class="unit">in²</span></div>
+    <div class="row" id="barCplSpRow"><label for="barCplSp">Coupler spacing<small>on center, measured up from bar tip</small></label><input id="barCplSp" type="number" value="15" step="1"><span class="unit">ft</span></div>
+    <div class="row" id="barCplRow"><label for="barCpl">Coupler OD</label><input id="barCpl" type="number" value="4.25" step="0.125" disabled><span class="unit">in</span></div>
+    <div class="row"><label for="Asbar">Total threadbar area</label><input id="Asbar" type="number" value="0" step="0.1" disabled><span class="unit">in²</span></div>
+    <div class="row"><label for="fybar">Bar yield, fy</label><input id="fybar" type="number" value="80" disabled><span class="unit">ksi</span></div>
+    <div class="row"><label for="psiR">ψr confinement factor<small>1.0 typical; 0.75 with spiral/ties per ACI</small></label><input id="psiR" type="number" value="1.0" step="0.05"><span class="unit">ψr</span></div>
+    <div class="row" id="ring2Row"><label for="useRing2">Add inner ring<small>second circular cage</small></label><input id="useRing2" type="checkbox"><span></span></div>
+    <div id="ring2Box">
+    <div class="row wide"><label for="barSize2">Inner ring bar size</label><select id="barSize2"></select></div>
+    <div class="row"><label for="barN2" id="barN2Lbl">Inner ring, number of bars</label><input id="barN2" type="number" value="6" min="1" step="1"><span class="unit">ea</span></div>
+    <div class="row" id="barB2Row"><label for="barB2">Bars per bundle, inner ring<small>1 = single bars; max. 3</small></label><input id="barB2" type="number" value="1" min="1" max="3" step="1"><span class="unit">ea</span></div>
+    <div class="row"><label for="ringClr">Clear between rings<small>outer coupler face to inner coupler face</small></label><input id="ringClr" type="number" value="3" step="0.25"><span class="unit">in</span></div>
+    <div class="row wide"><label>Inner ring circle diameter<small>to bar centers, calculated</small></label><span class="code" id="ring2V" style="text-align:right">—</span></div>
+    </div>
+    <div id="barFitRow"><div class="ckhead">Layout checks</div><div class="cklist" id="barFit"></div></div>
+  </fieldset>
+
+  <fieldset style="grid-column:1/-1"><legend>Cross sections</legend>
+    <div class="sketch" id="plan"></div>
+  </fieldset>
+
+  <fieldset><legend>Rock &amp; subsurface</legend>
+    <div class="row wide"><label for="rockSide">Rock class along socket<small>sets skin friction</small></label>
+      <select id="rockSide">
+        <option value="60">1a · Hard sound</option>
+        <option value="40" selected>1b · Medium hard</option>
+        <option value="20">1c · Intermediate</option>
+        <option value="8">1d · Soft</option>
+        <option value="custom">Geotech recommendation</option>
+      </select></div>
+    <div class="row wide"><label for="rockTip">Rock class at socket tip<small>sets end bearing</small></label>
+      <select id="rockTip">
+        <option value="60">1a · Hard sound</option>
+        <option value="40" selected>1b · Medium hard</option>
+        <option value="20">1c · Intermediate</option>
+        <option value="8">1d · Soft</option>
+        <option value="custom">Geotech recommendation</option>
+      </select></div>
+    <div class="row" id="qCustomRow"><label for="qCustom">Recommended end bearing<small>tip class = geotech</small></label><input id="qCustom" type="number" value="40"><span class="unit">tsf</span></div>
+    <div class="row"><label for="qu">Rock UCS</label><input id="qu" type="number" value="8000"><span class="unit">psi</span></div>
+    <div class="row"><label for="loadTest">Load test planned</label><input id="loadTest" type="checkbox"><span></span></div>
+  </fieldset>
+
+  <fieldset><legend>Profile</legend>
+    <div class="sketch" id="sketch"></div>
+  </fieldset>
+</div>
+<p class="note">Example values only. Rock class bearing values, allowable stress factors and socket rules are defaults to check against your copy of the 2022 NYC BC and the project geotechnical report.</p>
+</section>
+
+<!-- GEOTECH -->
+<section id="tab-geotech" role="tabpanel" hidden>
+<div class="tiles" id="geoTiles"></div>
+<div class="sum" id="sockSum"></div>
+<div class="grid">
+  <fieldset><legend>Ultimate skin friction</legend>
+    <div class="row"><label>Rock class along socket<small>set on Materials &amp; inputs</small></label><span class="code" id="classLbl" style="text-align:right">—</span><span></span></div>
+    <div class="row"><label>Rock class at tip<small>end bearing, if credited</small></label><span class="code" id="classTipLbl" style="text-align:right">—</span><span></span></div>
+    <div class="row"><label for="fsuStd">Ultimate unit skin friction<small id="fsuNote">1a/1b: 400 · 1c: 300</small></label><input id="fsuStd" type="number" disabled><span class="unit">psi</span></div>
+    <div class="row" id="fsuUserRow"><label for="fsuUser">Ultimate unit skin friction, user value<small>Required for Class 1d. Use engineering judgement.</small></label><input id="fsuUser" type="number" value="" placeholder="enter"><span class="unit">psi</span></div>
+    <div class="row"><label for="tSame">Use same value for tension</label><input id="tSame" type="checkbox" checked><span></span></div>
+    <div class="row" id="fsuTRow"><label for="fsuT">Ultimate skin friction, tension</label><input id="fsuT" type="number" value="400"><span class="unit">psi</span></div>
+  </fieldset>
+  <fieldset><legend>Factors &amp; options</legend>
+    <div class="row"><label for="FSc">Factor of safety, compression</label><input id="FSc" type="number" value="2" step="0.1"><span class="unit">FS</span></div>
+    <div class="row"><label for="FSt">Factor of safety, tension</label><input id="FSt" type="number" value="3" step="0.1"><span class="unit">FS</span></div>
+    <div class="row"><label for="Lneg">Socket length ignored at top<small>disturbed/weathered rock</small></label><input id="Lneg" type="number" value="0"><span class="unit">ft</span></div>
+    <div class="row"><label for="rnd">Round required length up to</label><input id="rnd" type="number" value="0.5" step="0.5"><span class="unit">ft</span></div>
+    <div class="row"><label for="useBase">Credit end bearing in compression<small>allowable value from rock class</small></label><input id="useBase" type="checkbox"><span></span></div>
+  </fieldset>
+</div>
+<h2>Working</h2>
+<div class="calc"><table id="geoCalc"></table></div>
+<p class="note">Required socket length is the largest of the geotechnical length, the NYC BC 1812.7.3 minimum (3 ft or the casing OD, whichever is greater), the stud length (rows × row spacing) and the threadbar development length, each rounded up. Geotechnical length = (load × FS) ÷ (ultimate skin friction × π × socket diameter), plus any length ignored at the top of rock. End bearing is off by default. If it is turned on, the allowable end bearing is subtracted from the compression load before sizing.</p>
+</section>
+
+<!-- STRUCTURAL -->
+<section id="tab-structural" role="tabpanel" hidden>
+<div class="tiles" id="strTiles"></div>
+<div class="grid">
+  <fieldset><legend>Allowable stress factors</legend>
+    <div class="row"><label for="kc">Concrete<small>× f'c</small></label><input id="kc" type="number" value="0.33" step="0.01"><span class="unit">×</span></div>
+    <div class="row"><label for="kcore">Steel core<small>× Fy</small></label><input id="kcore" type="number" value="0.50" step="0.01"><span class="unit">×</span></div>
+    <div class="row"><label for="kcase">Casing<small>× Fy, permanent only</small></label><input id="kcase" type="number" value="0.40" step="0.01"><span class="unit">×</span></div>
+    <div class="row"><label for="kbar">Threadbar<small>× fy</small></label><input id="kbar" type="number" value="0.40" step="0.01"><span class="unit">×</span></div>
+    <div class="row"><label for="FcoreMax">Steel core stress cap<small>Table 1810.8: 0.5 Fy ≤ 32 ksi</small></label><input id="FcoreMax" type="number" value="32"><span class="unit">ksi</span></div>
+    <div class="row"><label for="FbarMax">Threadbar stress cap<small>Table 1810.8: 0.4 fy ≤ 30 ksi</small></label><input id="FbarMax" type="number" value="30"><span class="unit">ksi</span></div>
+  </fieldset>
+</div>
+<h2>Shaft section (cased)</h2>
+<div class="calc"><table id="strShaft"></table></div>
+<h2>Socket section (uncased)</h2>
+<div class="calc"><table id="strSock"></table></div>
+<h2>NYC BC 1812.7 caisson pile requirements</h2>
+<div class="calc"><table id="strArea"></table></div>
+<div id="studSec"><h2>Core load transfer · shear studs</h2>
+<div class="calc"><table id="strStud"></table></div></div>
+<div id="devSec"><h2>Threadbar development in socket</h2>
+<div class="calc"><table id="strDev"></table></div></div>
+<p class="note">Defaults follow NYC BC Table 1810.8. A stress cap of 0 means no cap. Slenderness, bending, lateral capacity and group effects are not checked here.</p>
+</section>
+</div>
+
+<script>
+const BARS=[ // Nucor Skyline 2026 Technical Product Manual: min. net area thru threads; dia = approx. major thread diameter; then coupler OD (larger of hot/cold rolled), then nominal diameter
+ ["g80-6","#6 · Grade 80",0.86,0.44,80,1.25,0.75],["g80-7","#7 · Grade 80",0.99,0.60,80,1.5,0.875],["g80-8","#8 · Grade 80",1.12,0.79,80,1.625,1.0],
+ ["g80-9","#9 · Grade 80",1.26,1.00,80,2.0,1.125],["g80-10","#10 · Grade 80",1.43,1.27,80,2.0,1.25],["g80-11","#11 · Grade 80",1.61,1.56,80,2.25,1.375],
+ ["g80-14","#14 · Grade 80",1.86,2.25,80,3.0,1.75],["g80-18","#18 · Grade 80",2.50,4.00,80,3.75,2.25],["g80-20","#20 · Grade 80",2.75,4.91,80,4.25,2.5],
+ ["g80-24","#24 · Grade 80",3.25,7.07,80,4.75,3.0],["g80-28","#28 · Grade 80",3.75,9.61,80,5.5,3.5],["g80-32","#32 · Grade 80",4.125,12.57,80,6.5,4.0]];
+(function(){const sel=document.getElementById("barSize");
+ [["Grade 80 · Skyline",80]].forEach(([g,fy])=>{const og=document.createElement("optgroup");og.label=g;
+  BARS.filter(b=>b[4]===fy).forEach(b=>{const o=document.createElement("option");o.value=b[0];o.textContent=b[1]+" · A = "+b[3]+" in²";og.appendChild(o)});sel.appendChild(og)});
+ const o=document.createElement("option");o.value="custom";o.textContent="Custom bar";sel.appendChild(o);sel.value="g80-20";})();
+(function(){const s1=document.getElementById("barSize"),s2=document.getElementById("barSize2");s2.innerHTML=s1.innerHTML;s2.querySelector('option[value="custom"]')?.remove();s2.value="g80-14";})();
+const SHAPES=[["W44X335",98.5,44.0,15.9,1.03,1.77,2.56],["W44X290",85.4,43.6,15.8,0.865,1.58,2.36],["W44X262",77.2,43.3,15.8,0.785,1.42,2.2],["W44X230",67.8,42.9,15.8,0.71,1.22,2.01],["W40X655",193.0,43.6,16.9,1.97,3.54,4.72],["W40X593",174.0,43.0,16.7,1.79,3.23,4.41],["W40X503",148.0,42.1,16.4,1.54,2.76,3.94],["W40X431",127.0,41.3,16.2,1.34,2.36,3.54],["W40X397",117.0,41.0,16.1,1.22,2.2,3.38],["W40X372",110.0,40.6,16.1,1.16,2.05,3.23],["W40X362",106.0,40.6,16.0,1.12,2.01,3.19],["W40X324",95.3,40.2,15.9,1.0,1.81,2.99],["W40X297",87.3,39.8,15.8,0.93,1.65,2.83],["W40X277",81.5,39.7,15.8,0.83,1.58,2.76],["W40X249",73.5,39.4,15.8,0.75,1.42,2.6],["W40X215",63.5,39.0,15.8,0.65,1.22,2.4],["W40X199",58.8,38.7,15.8,0.65,1.07,2.25],["W40X392",116.0,41.6,12.4,1.42,2.52,3.7],["W40X331",97.7,40.8,12.2,1.22,2.13,3.31],["W40X327",95.9,40.8,12.1,1.18,2.13,3.31],["W40X294",86.2,40.4,12.0,1.06,1.93,3.11],["W40X278",82.3,40.2,12.0,1.03,1.81,2.99],["W40X264",77.4,40.0,11.9,0.96,1.73,2.91],["W40X235",69.1,39.7,11.9,0.83,1.58,2.76],["W40X211",62.1,39.4,11.8,0.75,1.42,2.6],["W40X183",53.3,39.0,11.8,0.65,1.2,2.38],["W40X167",49.3,38.6,11.8,0.65,1.03,2.21],["W40X149",43.8,38.2,11.8,0.63,0.83,2.01],["W36X925",272.0,43.1,18.6,3.02,4.53,5.28],["W36X853",251.0,43.1,18.2,2.52,4.53,5.28],["W36X802",236.0,42.6,18.0,2.38,4.29,5.04],["W36X723",213.0,41.8,17.8,2.17,3.9,4.65],["W36X652",192.0,41.1,17.6,1.97,3.54,4.49],["W36X529",156.0,39.8,17.2,1.61,2.91,3.86],["W36X487",143.0,39.3,17.1,1.5,2.68,3.63],["W36X441",130.0,38.9,17.0,1.36,2.44,3.39],["W36X395",116.0,38.4,16.8,1.22,2.2,3.15],["W36X361",106.0,38.0,16.7,1.12,2.01,2.96],["W36X330",96.9,37.7,16.6,1.02,1.85,2.8],["W36X302",89.0,37.3,16.7,0.945,1.68,2.63],["W36X282",82.9,37.1,16.6,0.885,1.57,2.52],["W36X262",77.2,36.9,16.6,0.84,1.44,2.39],["W36X247",72.5,36.7,16.5,0.8,1.35,2.3],["W36X231",68.2,36.5,16.5,0.76,1.26,2.21],["W36X256",75.3,37.4,12.2,0.96,1.73,2.48],["W36X232",68.0,37.1,12.1,0.87,1.57,2.32],["W36X210",61.9,36.7,12.2,0.83,1.36,2.11],["W36X194",57.0,36.5,12.1,0.765,1.26,2.01],["W36X182",53.6,36.3,12.1,0.725,1.18,1.93],["W36X170",50.0,36.2,12.0,0.68,1.1,1.85],["W36X160",47.0,36.0,12.0,0.65,1.02,1.77],["W36X150",44.3,35.9,12.0,0.625,0.94,1.69],["W36X135",39.9,35.6,12.0,0.6,0.79,1.54],["W33X387",114.0,36.0,16.2,1.26,2.28,3.07],["W33X354",104.0,35.6,16.1,1.16,2.09,2.88],["W33X318",93.7,35.2,16.0,1.04,1.89,2.68],["W33X291",85.6,34.8,15.9,0.96,1.73,2.52],["W33X263",77.4,34.5,15.8,0.87,1.57,2.36],["W33X241",71.1,34.2,15.9,0.83,1.4,2.19],["W33X221",65.3,33.9,15.8,0.775,1.28,2.06],["W33X201",59.1,33.7,15.7,0.715,1.15,1.94],["W33X169",49.5,33.8,11.5,0.67,1.22,1.92],["W33X152",44.9,33.5,11.6,0.635,1.06,1.76],["W33X141",41.5,33.3,11.5,0.605,0.96,1.66],["W33X130",38.3,33.1,11.5,0.58,0.855,1.56],["W33X118",34.7,32.9,11.5,0.55,0.74,1.44],["W30X391",115.0,33.2,15.6,1.36,2.44,3.23],["W30X357",105.0,32.8,15.5,1.24,2.24,3.03],["W30X326",95.9,32.4,15.4,1.14,2.05,2.84],["W30X292",86.0,32.0,15.3,1.02,1.85,2.64],["W30X261",77.0,31.6,15.2,0.93,1.65,2.44],["W30X235",69.3,31.3,15.1,0.83,1.5,2.29],["W30X211",62.3,30.9,15.1,0.775,1.32,2.1],["W30X191",56.1,30.7,15.0,0.71,1.19,1.97],["W30X173",50.9,30.4,15.0,0.655,1.07,1.85],["W30X148",43.6,30.7,10.5,0.65,1.18,1.83],["W30X132",38.8,30.3,10.5,0.615,1.0,1.65],["W30X124",36.5,30.2,10.5,0.585,0.93,1.58],["W30X116",34.2,30.0,10.5,0.565,0.85,1.5],["W30X108",31.7,29.8,10.5,0.545,0.76,1.41],["W30X99",29.0,29.7,10.5,0.52,0.67,1.32],["W30X90",26.3,29.5,10.4,0.47,0.61,1.26],["W27X539",159.0,32.5,15.3,1.97,3.54,4.33],["W27X368",109.0,30.4,14.7,1.38,2.48,3.27],["W27X336",99.2,30.0,14.6,1.26,2.28,3.07],["W27X307",90.2,29.6,14.4,1.16,2.09,2.88],["W27X281",83.1,29.3,14.4,1.06,1.93,2.72],["W27X258",76.1,29.0,14.3,0.98,1.77,2.56],["W27X235",69.4,28.7,14.2,0.91,1.61,2.4],["W27X217",63.9,28.4,14.1,0.83,1.5,2.29],["W27X194",57.1,28.1,14.0,0.75,1.34,2.13],["W27X178",52.5,27.8,14.1,0.725,1.19,1.98],["W27X161",47.6,27.6,14.0,0.66,1.08,1.87],["W27X146",43.2,27.4,14.0,0.605,0.975,1.76],["W27X129",37.8,27.6,10.0,0.61,1.1,1.7],["W27X114",33.6,27.3,10.1,0.57,0.93,1.53],["W27X102",30.0,27.1,10.0,0.515,0.83,1.43],["W27X94",27.6,26.9,10.0,0.49,0.745,1.34],["W27X84",24.7,26.7,10.0,0.46,0.64,1.24],["W24X370",109.0,28.0,13.7,1.52,2.72,3.22],["W24X335",98.3,27.5,13.5,1.38,2.48,2.98],["W24X306",89.7,27.1,13.4,1.26,2.28,2.78],["W24X279",81.9,26.7,13.3,1.16,2.09,2.59],["W24X250",73.5,26.3,13.2,1.04,1.89,2.39],["W24X229",67.2,26.0,13.1,0.96,1.73,2.23],["W24X207",60.7,25.7,13.0,0.87,1.57,2.07],["W24X192",56.5,25.5,13.0,0.81,1.46,1.96],["W24X176",51.7,25.2,12.9,0.75,1.34,1.84],["W24X162",47.8,25.0,13.0,0.705,1.22,1.72],["W24X146",43.0,24.7,12.9,0.65,1.09,1.59],["W24X131",38.6,24.5,12.9,0.605,0.96,1.46],["W24X117",34.4,24.3,12.8,0.55,0.85,1.35],["W24X104",30.7,24.1,12.8,0.5,0.75,1.25],["W24X103",30.3,24.5,9.0,0.55,0.98,1.48],["W24X94",27.7,24.3,9.07,0.515,0.875,1.38],["W24X84",24.7,24.1,9.02,0.47,0.77,1.27],["W24X76",22.4,23.9,8.99,0.44,0.68,1.18],["W24X68",20.1,23.7,8.97,0.415,0.585,1.09],["W24X62",18.2,23.7,7.04,0.43,0.59,1.09],["W24X55",16.2,23.6,7.01,0.395,0.505,1.01],["W21X275",81.8,24.1,12.9,1.22,2.19,3.37],["W21X248",73.8,23.7,12.8,1.1,1.99,3.17],["W21X223",66.5,23.4,12.7,1.0,1.79,2.97],["W21X201",59.3,23.0,12.6,0.91,1.63,2.13],["W21X182",53.6,22.7,12.5,0.83,1.48,1.98],["W21X166",48.8,22.5,12.4,0.75,1.36,1.86],["W21X147",43.2,22.1,12.5,0.72,1.15,1.65],["W21X132",38.8,21.8,12.4,0.65,1.04,1.54],["W21X122",35.9,21.7,12.4,0.6,0.96,1.46],["W21X111",32.6,21.5,12.3,0.55,0.875,1.38],["W21X101",29.8,21.4,12.3,0.5,0.8,1.3],["W21X93",27.3,21.6,8.42,0.58,0.93,1.43],["W21X83",24.4,21.4,8.36,0.515,0.835,1.34],["W21X73",21.5,21.2,8.3,0.455,0.74,1.24],["W21X68",20.0,21.1,8.27,0.43,0.685,1.19],["W21X62",18.3,21.0,8.24,0.4,0.615,1.12],["W21X55",16.2,20.8,8.22,0.375,0.522,1.02],["W21X48",14.1,20.6,8.14,0.35,0.43,0.93],["W21X57",16.7,21.1,6.56,0.405,0.65,1.15],["W21X50",14.7,20.8,6.53,0.38,0.535,1.04],["W21X44",13.0,20.7,6.5,0.35,0.45,0.95],["W18X311",91.6,22.3,12.0,1.52,2.74,3.24],["W18X283",83.3,21.9,11.9,1.4,2.5,3.0],["W18X258",76.0,21.5,11.8,1.28,2.3,2.7],["W18X234",68.6,21.1,11.7,1.16,2.11,2.51],["W18X211",62.3,20.7,11.6,1.06,1.91,2.31],["W18X192",56.2,20.4,11.5,0.96,1.75,2.15],["W18X175",51.4,20.0,11.4,0.89,1.59,1.99],["W18X158",46.3,19.7,11.3,0.81,1.44,1.84],["W18X143",42.0,19.5,11.2,0.73,1.32,1.72],["W18X130",38.3,19.3,11.2,0.67,1.2,1.6],["W18X119",35.1,19.0,11.3,0.655,1.06,1.46],["W18X106",31.1,18.7,11.2,0.59,0.94,1.34],["W18X97",28.5,18.6,11.1,0.535,0.87,1.27],["W18X86",25.3,18.4,11.1,0.48,0.77,1.17],["W18X76",22.3,18.2,11.0,0.425,0.68,1.08],["W18X71",20.9,18.5,7.64,0.495,0.81,1.21],["W18X65",19.1,18.4,7.59,0.45,0.75,1.15],["W18X60",17.6,18.2,7.56,0.415,0.695,1.1],["W18X55",16.2,18.1,7.53,0.39,0.63,1.03],["W18X50",14.7,18.0,7.5,0.355,0.57,0.972],["W18X46",13.5,18.1,6.06,0.36,0.605,1.01],["W18X40",11.8,17.9,6.02,0.315,0.525,0.927],["W18X35",10.3,17.7,6.0,0.3,0.425,0.8270000000000001],["W16X100",29.4,17.0,10.4,0.585,0.985,1.39],["W16X89",26.2,16.8,10.4,0.525,0.875,1.28],["W16X77",22.6,16.5,10.3,0.455,0.76,1.16],["W16X67",19.6,16.3,10.2,0.395,0.665,1.07],["W16X57",16.8,16.4,7.12,0.43,0.715,1.12],["W16X50",14.7,16.3,7.07,0.38,0.63,1.03],["W16X45",13.3,16.1,7.04,0.345,0.565,0.9670000000000001],["W16X40",11.8,16.0,7.0,0.305,0.505,0.907],["W16X36",10.6,15.9,6.99,0.295,0.43,0.8320000000000001],["W16X31",9.13,15.9,5.53,0.275,0.44,0.8420000000000001],["W16X26",7.68,15.7,5.5,0.25,0.345,0.747],["W14X873",257.0,23.6,18.8,3.94,5.51,6.1],["W14X808",238.0,22.8,18.6,3.74,5.12,5.71],["W14X730",215.0,22.4,17.9,3.07,4.91,5.51],["W14X665",196.0,21.6,17.7,2.83,4.52,5.12],["W14X605",178.0,20.9,17.4,2.6,4.16,4.76],["W14X550",162.0,20.2,17.2,2.38,3.82,4.42],["W14X500",147.0,19.6,17.0,2.19,3.5,4.1],["W14X455",134.0,19.0,16.8,2.02,3.21,3.81],["W14X426",125.0,18.7,16.7,1.88,3.04,3.63],["W14X398",117.0,18.3,16.6,1.77,2.85,3.44],["W14X370",109.0,17.9,16.5,1.66,2.66,3.26],["W14X342",101.0,17.5,16.4,1.54,2.47,3.07],["W14X311",91.4,17.1,16.2,1.41,2.26,2.86],["W14X283",83.3,16.7,16.1,1.29,2.07,2.67],["W14X257",75.6,16.4,16.0,1.18,1.89,2.49],["W14X233",68.5,16.0,15.9,1.07,1.72,2.32],["W14X211",62.0,15.7,15.8,0.98,1.56,2.16],["W14X193",56.8,15.5,15.7,0.89,1.44,2.04],["W14X176",51.8,15.2,15.7,0.83,1.31,1.91],["W14X159",46.7,15.0,15.6,0.745,1.19,1.79],["W14X145",42.7,14.8,15.5,0.68,1.09,1.69],["W14X132",38.8,14.7,14.7,0.645,1.03,1.63],["W14X120",35.3,14.5,14.7,0.59,0.94,1.54],["W14X109",32.0,14.3,14.6,0.525,0.86,1.46],["W14X99",29.1,14.2,14.6,0.485,0.78,1.38],["W14X90",26.5,14.0,14.5,0.44,0.71,1.31],["W14X82",24.0,14.3,10.1,0.51,0.855,1.45],["W14X74",21.8,14.2,10.1,0.45,0.785,1.38],["W14X68",20.0,14.0,10.0,0.415,0.72,1.31],["W14X61",17.9,13.9,10.0,0.375,0.645,1.24],["W14X53",15.6,13.9,8.06,0.37,0.66,1.25],["W14X48",14.1,13.8,8.03,0.34,0.595,1.19],["W14X43",12.6,13.7,8.0,0.305,0.53,1.12],["W14X38",11.2,14.1,6.77,0.31,0.515,0.915],["W14X34",10.0,14.0,6.75,0.285,0.455,0.855],["W14X30",8.85,13.8,6.73,0.27,0.385,0.785],["W14X26",7.69,13.9,5.03,0.255,0.42,0.82],["W14X22",6.49,13.7,5.0,0.23,0.335,0.735],["W12X336",98.9,16.8,13.4,1.78,2.96,3.55],["W12X305",89.5,16.3,13.2,1.63,2.71,3.3],["W12X279",81.9,15.9,13.1,1.53,2.47,3.07],["W12X252",74.1,15.4,13.0,1.4,2.25,2.85],["W12X230",67.7,15.1,12.9,1.29,2.07,2.67],["W12X210",61.8,14.7,12.8,1.18,1.9,2.5],["W12X190",56.0,14.4,12.7,1.06,1.74,2.33],["W12X170",50.0,14.0,12.6,0.96,1.56,2.16],["W12X152",44.7,13.7,12.5,0.87,1.4,2.0],["W12X136",39.9,13.4,12.4,0.79,1.25,1.85],["W12X120",35.2,13.1,12.3,0.71,1.11,1.7],["W12X106",31.2,12.9,12.2,0.61,0.99,1.59],["W12X96",28.2,12.7,12.2,0.55,0.9,1.5],["W12X87",25.6,12.5,12.1,0.515,0.81,1.41],["W12X79",23.2,12.4,12.1,0.47,0.735,1.33],["W12X72",21.1,12.3,12.0,0.43,0.67,1.27],["W12X65",19.1,12.1,12.0,0.39,0.605,1.2],["W12X58",17.0,12.2,10.0,0.36,0.64,1.24],["W12X53",15.6,12.1,10.0,0.345,0.575,1.18],["W12X50",14.6,12.2,8.08,0.37,0.64,1.14],["W12X45",13.1,12.1,8.05,0.335,0.575,1.08],["W12X40",11.7,11.9,8.01,0.295,0.515,1.02],["W12X35",10.3,12.5,6.56,0.3,0.52,0.82],["W12X30",8.79,12.3,6.52,0.26,0.44,0.74],["W12X26",7.65,12.2,6.49,0.23,0.38,0.68],["W12X22",6.48,12.3,4.03,0.26,0.425,0.725],["W12X19",5.57,12.2,4.01,0.235,0.35,0.65],["W12X16",4.71,12.0,3.99,0.22,0.265,0.565],["W12X14",4.16,11.9,3.97,0.2,0.225,0.525],["W10X112",32.9,11.4,10.4,0.755,1.25,1.75],["W10X100",29.3,11.1,10.3,0.68,1.12,1.62],["W10X88",26.0,10.8,10.3,0.605,0.99,1.49],["W10X77",22.7,10.6,10.2,0.53,0.87,1.37],["W10X68",19.9,10.4,10.1,0.47,0.77,1.27],["W10X60",17.7,10.2,10.1,0.42,0.68,1.18],["W10X54",15.8,10.1,10.0,0.37,0.615,1.12],["W10X49",14.4,10.0,10.0,0.34,0.56,1.06],["W10X45",13.3,10.1,8.02,0.35,0.62,1.12],["W10X39",11.5,9.92,7.99,0.315,0.53,1.03],["W10X33",9.71,9.73,7.96,0.29,0.435,0.935],["W10X30",8.84,10.5,5.81,0.3,0.51,0.81],["W10X26",7.61,10.3,5.77,0.26,0.44,0.74],["W10X22",6.49,10.2,5.75,0.24,0.36,0.66],["W10X19",5.62,10.2,4.02,0.25,0.395,0.695],["W10X17",4.99,10.1,4.01,0.24,0.33,0.63],["W10X15",4.41,9.99,4.0,0.23,0.27,0.57],["W10X12",3.54,9.87,3.96,0.19,0.21,0.51],["W8X67",19.7,9.0,8.28,0.57,0.935,1.33],["W8X58",17.1,8.75,8.22,0.51,0.81,1.2],["W8X48",14.1,8.5,8.11,0.4,0.685,1.08],["W8X40",11.7,8.25,8.07,0.36,0.56,0.9540000000000001],["W8X35",10.3,8.12,8.02,0.31,0.495,0.889],["W8X31",9.13,8.0,8.0,0.285,0.435,0.8290000000000001],["W8X28",8.25,8.06,6.54,0.285,0.465,0.8590000000000001],["W8X24",7.08,7.93,6.5,0.245,0.4,0.794],["W8X21",6.16,8.28,5.27,0.25,0.4,0.7],["W8X18",5.26,8.14,5.25,0.23,0.33,0.63],["W8X15",4.44,8.11,4.02,0.245,0.315,0.615],["W8X13",3.84,7.99,4.0,0.23,0.255,0.555],["W8X10",2.96,7.89,3.94,0.17,0.205,0.505],["W6X25",7.34,6.38,6.08,0.32,0.455,0.705],["W6X20",5.87,6.2,6.02,0.26,0.365,0.615],["W6X15",4.43,5.99,5.99,0.23,0.26,0.51],["W6X16",4.74,6.28,4.03,0.26,0.405,0.655],["W6X12",3.55,6.03,4.0,0.23,0.28,0.53],["W6X9",2.68,5.9,3.94,0.17,0.215,0.465],["W6X8.5",2.52,5.83,3.94,0.17,0.195,0.445],["W5X19",5.56,5.15,5.03,0.27,0.43,0.73],["W5X16",4.71,5.01,5.0,0.24,0.36,0.66],["W4X13",3.83,4.16,4.06,0.28,0.345,0.595],["HP18X204",60.2,18.3,18.1,1.13,1.13,2.31],["HP18X181",53.2,18.0,18.0,1.0,1.0,2.18],["HP18X157",46.2,17.7,17.9,0.87,0.87,2.05],["HP18X135",39.9,17.5,17.8,0.75,0.75,1.93],["HP16X183",54.1,16.5,16.3,1.13,1.13,2.31],["HP16X162",47.7,16.3,16.1,1.0,1.0,2.18],["HP16X141",41.7,16.0,16.0,0.875,0.875,2.06],["HP16X121",35.8,15.8,15.9,0.75,0.75,1.93],["HP16X101",29.9,15.5,15.8,0.625,0.625,1.81],["HP16X88",25.8,15.3,15.7,0.54,0.54,1.72],["HP14X117",34.4,14.2,14.9,0.805,0.805,1.5],["HP14X102",30.1,14.0,14.8,0.705,0.705,1.38],["HP14X89",26.1,13.8,14.7,0.615,0.615,1.31],["HP14X73",21.4,13.6,14.6,0.505,0.505,1.19],["HP12X89",25.9,12.4,12.3,0.72,0.72,1.32],["HP12X84",24.6,12.3,12.3,0.685,0.685,1.38],["HP12X74",21.8,12.1,12.2,0.605,0.61,1.31],["HP12X63",18.4,11.9,12.1,0.515,0.515,1.25],["HP12X53",15.5,11.8,12.0,0.435,0.435,1.13],["HP10X57",16.7,9.99,10.2,0.565,0.565,1.25],["HP10X42",12.4,9.7,10.1,0.415,0.42,1.13],["HP8X36",10.6,8.02,8.16,0.445,0.445,1.13]];
+(function(){const sel=document.getElementById("coreName");
+ const add=(g,list)=>{const og=document.createElement("optgroup");og.label=g;list.forEach(r=>{const o=document.createElement("option");o.value=r[0];o.textContent=r[0].replace("X","×")+" · A = "+r[1]+" in²";og.appendChild(o)});sel.appendChild(og)};
+ add("W shapes",SHAPES.filter(r=>r[0][0]==="W"));add("HP shapes",SHAPES.filter(r=>r[0].startsWith("HP")));
+ const o=document.createElement("option");o.value="custom";o.textContent="Custom / built-up";sel.appendChild(o);
+ sel.value="W14X311";})();
+</script>
+<script>
+const $=id=>document.getElementById(id);
+const KEY="rsc-check-v20";
+const fields=[...document.querySelectorAll("input,select")].filter(e=>e.id&&e.type!=="file"&&e.id!=="dsNewName");
+const defaults={}; fields.forEach(e=>defaults[e.id]=e.type==="checkbox"?e.checked:e.value);
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null"); if(s) fields.forEach(e=>{if(e.id in s){e.type==="checkbox"?e.checked=s[e.id]:e.value=s[e.id]}})}catch(_){}
+const v=id=>{const e=$(id);return e.type==="checkbox"?e.checked:(parseFloat(e.value)||0)};
+const f=(x,d=1)=>Number.isFinite(x)?x.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const circ=d=>Math.PI*d*d/4;
+const row=(a,b,c,u,cls="")=>`<tr class="${cls}"><td>${a}</td><td class="f">${b}</td><td class="n">${c} <span class="unit">${u}</span></td></tr>`;
+const head=`<tr><th>Item</th><th>Expression</th><th style="text-align:right">Value</th></tr>`;
+const tile=(k,val,u)=>`<div class="tile"><div class="k">${k}</div><div class="v">${val} <span>${u}</span></div></div>`;
+const verdict=(r)=>{const ok=r<=1;return `<div class="tile verdict ${ok?"ok":"bad"}"><div class="k">Demand / capacity</div><div class="v">${f(r,2)}</div><span class="pill ${ok?"ok":"bad"}">${ok?"OK":"NG"}</span></div>`};
+
+// Layout check helpers: each check is label, actual value, comparison, limit
+const CK=(label,val,op,lim,unit="in",note="")=>{const ok=op==="≥"?val>=lim-1e-9:op==="≤"?val<=lim+1e-9:op==="<"?val<lim:val>lim;
+  return {label,ok,act:Number.isFinite(val)?f(val,2)+" "+unit:"—",req:op+" "+f(lim,2)+" "+unit+(note?" ("+note+")":"")}};
+const ckPill=ok=>`<span class="pill ${ok?"ok":"warn"}">${ok?"OK":"review"}</span>`;
+const ckTable=list=>list.map(c=>c.info?`<div class="ck info"><div class="ck-l">${c.label}</div><div class="ck-v"><span><b>${c.act}</b></span>${c.val<3.75?'<span class="pill warn">see note</span>':""}</div></div>`:`<div class="ck ${c.ok?"":"bad"}"><div class="ck-l">${c.label}</div><div class="ck-v"><span><b>${c.act}</b> <span class="ck-op">${c.req}</span></span>${ckPill(c.ok)}</div></div>`).join("");
+const ckRows=list=>list.map(c=>`<tr><td>${c.label}</td><td class="f">required ${c.req}</td><td class="n">${c.act} ${ckPill(c.ok)}</td></tr>`).join("");
+function calc(){
+  const useCore=v("useCore"), useBar=v("useBar");
+  $("coreBox").hidden=!useCore; $("studBox").hidden=!useCore; $("barBox").hidden=!useBar; $("studSec").hidden=!useCore;
+  $("reinfHint").textContent=useCore&&useBar?"Core and threadbar together is less common. Check the layout below.":(!useCore&&!useBar?"No reinforcement: plain concrete plus casing.":"");
+  const shT=SHAPES.find(r=>r[0]===$("coreName").value), sh=useCore?shT:null, ac=$("Acore");
+  const limB=Math.min(v("Dshaft")-2*v("tcase"),v("Dsock"));
+  if(shT){ac.disabled=true;ac.value=shT[1];$("AcoreNote").textContent="from AISC table";const dg=Math.hypot(shT[2],shT[3]);$("coreDimTxt").textContent=f(shT[2],2)+" × "+f(shT[3],2)+" in";$("coreDims").innerHTML=ckTable([CK("Core diagonal",dg,"<",limB,"in","smaller of casing ID and socket")]);}
+  else{ac.disabled=false;$("AcoreNote").textContent="enter area";$("coreDimTxt").textContent="—";$("coreDims").innerHTML="";}
+  const AcE=useCore?v("Acore"):0;
+  // threadbar
+  const arr=useBar?$("barArr").value:"none", bs=BARS.find(b=>b[0]===$("barSize").value);
+  $("barCircRow").hidden=arr!=="circular";$("barCircOut").hidden=arr!=="circular";
+  $("barBRow").hidden=arr!=="circular";
+  if(bs){$("barAb").disabled=true;$("barAb").value=bs[3];$("barCpl").disabled=true;$("barCpl").value=bs[5];$("fybar").disabled=true;$("fybar").value=bs[4];}
+  else{$("barAb").disabled=false;$("fybar").disabled=false;$("barCpl").disabled=false;}
+  let nb=Math.max(1,Math.round(v("barN"))); if(arr==="central"&&nb>4){nb=4;$("barN").value=4;}
+  const ring2=arr==="circular"&&v("useRing2"), bs2=BARS.find(b=>b[0]===$("barSize2").value)||BARS[0];
+  $("ring2Row").hidden=arr!=="circular"; $("ring2Box").hidden=!ring2;
+  const nb2=Math.max(1,Math.round(v("barN2"))), db2=bs2[2], dc2=Math.max(db2,bs2[5]);
+  const clampB=id=>{let n=Math.round(v(id));if(!(n>=1)){n=1;}if(n>3){n=3;}if(String(n)!==$(id).value&&document.activeElement!==$(id))$(id).value=n;return n;};
+  const nB1=arr==="circular"?clampB("barB"):1, nB2=ring2?clampB("barB2"):1;
+  $("barNLbl").firstChild.textContent=arr==="central"?"Bars in bundle (max. 4)":nB1>1?"Number of bundles":"Number of bars";
+  $("barN2Lbl").firstChild.textContent=nB2>1?"Inner ring, number of bundles":"Inner ring, number of bars";
+  $("Asbar").value=arr==="none"?0:+(nb*nB1*v("barAb")+(ring2?nb2*nB2*bs2[3]:0)).toFixed(2);
+  const db=bs?bs[2]:Math.sqrt(4*v("barAb")/Math.PI);
+  const dc=Math.max(db,v("barCpl"));
+  // bundle geometry: local offsets (tangential, radial) in bar diameters; one coupler per bundle at any level (staggered)
+  const BOFF={1:[[0,0]],2:[[-.5,0],[.5,0]],3:[[-.5,.289],[.5,.289],[0,-.577]],4:[[-.5,-.5],[.5,-.5],[-.5,.5],[.5,.5]]};
+  const rH=(n,d,c)=>n===1?c/2:n===2?c/2:n===3?0.577*d+c/2:d/2+c/2;          // radial half depth incl. coupler
+  const wB=(n,d)=>n===1?d:2*d, wC=(n,d,c)=>n===1?c:d/2+c/2+Math.max(d,c/2-d/2); // tangential width at bars / at a coupler level
+  const rh1=rH(nB1,db,dc), rh2=rH(nB2,db2,dc2);
+  const Dcirc=Math.max(0,v("Dsock")-2*v("barEdge")-2*rh1); if(arr==="circular") $("barCircV").textContent=f(Dcirc,2)+" in";
+  const D2=Math.max(0,Dcirc-2*rh1-2*rh2-2*v("ringClr")); if(ring2) $("ring2V").textContent=f(D2,2)+" in";
+  const barPts=[];
+  const ringPts=(R,n,nB,d,c,rn,ph)=>{for(let i=0;i<n;i++){const t=2*Math.PI*(i+ph)/n-Math.PI/2, ux=Math.cos(t), uy=Math.sin(t);
+    BOFF[nB].forEach(([ta,ra],j)=>{const r=R+ra*d, tt=ta*d;barPts.push([r*ux-tt*uy, r*uy+tt*ux, d, c, rn, j===0]);});}};
+  if(arr==="circular"){ringPts(Dcirc/2,nb,nB1,db,dc,1,0); if(ring2) ringPts(D2/2,nb2,nB2,db2,dc2,2,0.5);}
+  if(arr==="central"){const r=db/2;[[[0,0]],[[-1,0],[1,0]],[[-1,.58],[1,.58],[0,-1.15]],[[-1,-1],[1,-1],[-1,1],[1,1]]][nb-1].forEach(([x,y],j)=>barPts.push([x*r,y*r,db,dc,1,j===0]))}
+  // Clear spacing between bars/couplers is reported, not pass/fail; below AGG_CLR a mix-design note is shown
+  const AGG_CLR=3.75, SP=(label,val)=>({label,info:true,ok:true,val,act:Number.isFinite(val)?f(val,2)+" in":"—",req:""});
+  let ok=true; const bck=[];
+  if(arr==="circular"){const Rc=Dcirc/2, ch=nb>1?2*Rc*Math.sin(Math.PI/nb):Infinity;
+    const edgeC=(v("Dsock")-Dcirc)/2-rh1;
+    if(nb>1){bck.push(SP("Outer ring: clear spacing between "+(nB1>1?"bundles":"bars"),ch-wB(nB1,db)));bck.push(SP("Outer ring: clear spacing at couplers",ch-wC(nB1,db,dc)));}
+    bck.push(CK("Outer ring: edge distance to socket wall",edgeC,"≥",v("barEdge")));
+    if(ring2){const ch2=nb2>1?2*(D2/2)*Math.sin(Math.PI/nb2):Infinity;
+      bck.push(CK("Inner ring: circle diameter",D2,">",0));
+      if(nb2>1){bck.push(SP("Inner ring: clear spacing between "+(nB2>1?"bundles":"bars"),ch2-wB(nB2,db2)));bck.push(SP("Inner ring: clear spacing at couplers",ch2-wC(nB2,db2,dc2)));}
+      bck.push(SP("Clear between rings, couplers",v("ringClr")));}
+    if(sh){const inR=ring2?D2/2:Rc, inRh=ring2?rh2:rh1, coreR=Math.hypot(sh[2],sh[3])/2;
+      bck.push(CK((ring2?"Inner":"Outer")+" ring couplers: clear to core",inR-inRh-coreR,"≥",0,"in","no overlap"));}
+  }
+  else if(arr==="central"){bck.push({label:"Central bundle: no steel core at center",ok:!sh,act:sh?"core present":"no core",req:"no core"});
+    bck.push({label:"Bundle couplers",ok:true,act:"bundle of "+nb,req:"stagger couplers"});}
+  const tight=bck.filter(c=>c.info&&Number.isFinite(c.val)&&c.val<AGG_CLR);
+  ok=bck.every(c=>c.ok);
+  if(arr!=="none") $("barFit").innerHTML=ckTable(bck)+(tight.length?`<div class="cknote"><b>Note:</b> clear spacing is under ${f(AGG_CLR,2)} in (smallest ${f(Math.min(...tight.map(c=>c.val)),2)} in). The concrete mix design may need to limit the maximum coarse aggregate size, or use a grout mix instead.</div>`:"");
+  // stud geometry
+  const sd=v("studDia"), sL=v("studL"), useW=v("studWeb"), useF=v("studFl");
+  $("studPerRow").hidden=!useW; $("studPerFRow").hidden=!useF;
+  $("studVRow").hidden=$("studMode").value!=="user";
+  let stud=null;
+  if(sh&&(useW||useF)){const [,,d,bf,tw,tf,kd]=sh, groups=[], tips=[];
+    const mk=(loc,n,span)=>{n=Math.max(1,Math.round(n));const pos=n===1?[0]:Array.from({length:n},(_,i)=>-span/2+i*span/(n-1));
+      pos.forEach(p=>[-1,1].forEach(sg=>tips.push(loc==="web"?[sg*(tw/2+sL),p]:[p,sg*(d/2+sL)])));
+      groups.push({loc,pos,sT:n>1?span/(n-1):Infinity});};
+    const se=v("studEdge");
+    if(useW) mk("web",v("studPer"),Math.max(0,d-2*tf-2*se));
+    if(useF) mk("flange",v("studPerF"),Math.max(0,bf-2*se));
+    const rTip=Math.max(...tips.map(([x,y])=>Math.hypot(x,y)));
+    const clrWall=limB/2-rTip;
+    const clrBar=barPts.length?Math.min(...tips.flatMap(([x,y])=>barPts.map(([bx,by,,bc])=>Math.hypot(x-bx,y-by)-bc/2))):Infinity;
+    const pastTips=useW&&sL>(bf-tw)/2;
+    stud={d:sd,L:sL,groups,tw,dd:d,clrWall,clrBar,pastTips,perLvl:groups.reduce((a,g)=>a+2*g.pos.length,0)};
+  }
+  const P=v("PD")+v("PL")+v("PO"), Pdd=v("PDD"), Ptot=P+Pdd;
+  // Geotech
+  const Ds=v("Dsock"), Ab=circ(Ds)/144;
+  const CL={"60":"1a","40":"1b","20":"1c","8":"1d","custom":"Geotech"};
+  const rc=$("rockSide").value, rt=$("rockTip").value, cls=CL[rc], clsT=CL[rt];
+  $("qCustomRow").hidden=rt!=="custom";
+  const std={"1a":400,"1b":400,"1c":300}[cls];
+  const needUser=std===undefined;
+  $("classLbl").textContent="Class "+cls;$("classTipLbl").textContent="Class "+clsT+" · "+f(rt==="custom"?v("qCustom"):parseFloat(rt),0)+" tsf";
+  $("fsuStd").value=needUser?"":std;
+  $("fsuUserRow").hidden=!needUser; $("fsuStd").closest(".row").hidden=needUser;
+  $("fsuTRow").hidden=v("tSame");
+  const fsu=needUser? v("fsuUser") : std;
+  const fsuT=v("tSame")? fsu : v("fsuT");
+  const qt = rt==="custom"? v("qCustom") : parseFloat(rt);
+  const qa = qt*2; // ksf
+  const Qb = v("useBase")? qa*Ab : 0;
+  const perim=Math.PI*Ds; // in
+  const FSc=v("FSc"), FSt=v("FSt"), Pu=v("PU"), Ln=v("Lneg"), inc=v("rnd");
+  const Pc=Math.max(0,Ptot-Qb);
+  const Lc = fsu>0? Pc*FSc*1000/(fsu*perim)/12 : NaN;   // ft
+  const Lt = Pu>0? (fsuT>0? Pu*FSt*1000/(fsuT*perim)/12 : NaN) : 0;
+  const Lraw=Math.max(Lc,Lt)+Ln;
+  const Lreq = inc>0? Math.ceil(Lraw/inc-1e-9)*inc : Lraw;
+  window.LREQ=Lreq; const rg=Number.isFinite(Lreq)?1:2;
+  const gov = Lt>Lc?"tension":"compression";
+  if(!Number.isFinite(Lreq)){
+    $("geoTiles").innerHTML=`<div class="tile verdict bad" style="grid-column:1/-1"><div class="k">Input needed</div><div class="v" style="font-size:15px">Class ${cls}: enter an ultimate unit skin friction. Use engineering judgement.</div></div>`;
+    $("geoCalc").innerHTML="";
+  } else {
+  $("geoTiles").innerHTML=`<div class="tile verdict ok"><div class="k">Required socket length</div><div class="v">${f(Lreq,1)} <span>ft</span></div><span class="code">${gov} governs</span></div>`+
+    tile("Compression length",f(Lc,2),"ft")+
+    tile("Tension length",f(Lt,2),"ft");
+  $("geoCalc").innerHTML=head+
+    row("Compression demand","D + L + other + downdrag",f(Ptot,0),"kip")+
+    (v("useBase")? row("Allowable end bearing credit, tip Class "+clsT,f(qt,0)+" tsf × 2 × "+f(Ab,2)+" ft²",f(Qb,0),"kip")+row("Load to skin friction","P − Qb",f(Pc,0),"kip"):"")+
+    row("Ultimate unit skin friction, compression","Class "+cls,f(fsu,0),"psi")+
+    row("Socket perimeter","π · "+f(Ds,1)+" in",f(perim,1),"in")+
+    row("Required length, compression",f(Pc,0)+" × "+f(FSc,1)+" ÷ ("+f(fsu,0)+" psi × "+f(perim,1)+")",f(Lc,2),"ft")+
+    (Pu>0? row("Ultimate unit skin friction, tension",v("tSame")?"same as compression":"user value",f(fsuT,0),"psi")+
+      row("Required length, tension",f(Pu,0)+" × "+f(FSt,1)+" ÷ ("+f(fsuT,0)+" psi × "+f(perim,1)+")",f(Lt,2),"ft")
+      : row("Required length, tension","no uplift load","0.00","ft"))+
+    row("Length ignored at top of rock","",f(Ln,1),"ft")+
+    row("Required socket length","max(comp, tension) + ignored, rounded up "+f(inc,1)+" ft",f(Lreq,1),"ft","sum");
+  }
+  // Structural
+  const Fc=v("kc")*v("fc"), cap=v("FcoreMax");
+  let Fcore=v("kcore")*v("Fycore"); if(cap>0) Fcore=Math.min(Fcore,cap);
+  const Fcase=v("kcase")*v("Fycase"), Fbar=v("FbarMax")>0?Math.min(v("kbar")*v("fybar"),v("FbarMax")):v("kbar")*v("fybar");
+  const Do=v("Dshaft"), t=v("tcase"), tn=Math.max(0,t-v("tcorr"));
+  const Ain=circ(Do-2*t);
+  const Acase=v("casePerm")? (circ(Do-2*v("tcorr"))-Ain) : 0;
+  const Ac1=Math.max(0,Ain-AcE-v("Asbar"));
+  const Q1=Fc*Ac1+Fcore*AcE+Fcase*Acase+Fbar*v("Asbar"), r1=P/Q1;
+  const As=circ(Ds), Ac2=Math.max(0,As-AcE-v("Asbar"));
+  const Q2=Fc*Ac2+Fcore*AcE+Fbar*v("Asbar"), r2=Ptot/Q2;
+  const rs=Math.max(r1,r2);
+  // NYC BC 1812.7 checks
+  const Ag=circ(Do), AinC=circ(Do-2*t), Acen=AcE+(arr==="central"?v("Asbar"):0), Aper=arr==="circular"?v("Asbar"):0;
+  const areaCk=[];
+  if(Acen>0) areaCk.push(CK((useCore?"Steel core":"")+(useCore&&arr==="central"?" + ":"")+(arr==="central"?"center bundle":"")+" area, % of gross area",Acen/Ag*100,"≤",30,"%","1812.7.4, Ag = π·"+f(Do,1)+"²/4 = "+f(Ag,0)+" in²"));
+  if(Aper>0) areaCk.push(CK("Perimeter threadbar area, % of area inside casing",Aper/AinC*100,"≤",8,"%","1812.7.4, Ain = "+f(AinC,0)+" in²"));
+  areaCk.push({label:"Rock socket in Class 1c or better",ok:["60","40","20","custom"].includes($("rockSide").value),act:"Class "+{"60":"1a","40":"1b","20":"1c","8":"1d","custom":"geotech"}[$("rockSide").value],req:"1a, 1b or 1c (1812.7.1)"});
+  areaCk.push(CK("Concrete or grout f′c",v("fc"),"≥",4,"ksi","1812.7.2"));
+  areaCk.push(CK("Casing wall thickness",t,"≥",0.375,"in","1812.7.2"));
+  if(useCore) areaCk.push({label:"Steel core set within 6 in above base of socket",ok:true,act:"3 in (drawn)",req:"≤ 6 in (1812.7.6)"});
+  const areaOk=areaCk.every(c=>c.ok);
+  $("strArea").innerHTML=head+ckRows(areaCk);
+  $("strTiles").innerHTML=tile("Shaft D/C",f(r1,2),"")+tile("Socket D/C",f(r2,2),"")+verdict(rs)+`<div class="tile verdict ${areaOk?"ok":"bad"}"><div class="k">1812.7 requirements</div><div class="v" style="font-size:16px">${areaOk?"All met":areaCk.filter(c=>!c.ok).length+" not met"}</div></div>`;
+  const mat=(Ac,Acs)=>
+    row("Concrete",f(v("kc"),2)+" × "+f(v("fc"),1)+" ksi × "+f(Ac,1)+" in²",f(Fc*Ac,0),"kip")+
+    (useCore?row("Steel core "+$("coreName").value.replace("X","×"),f(Fcore,1)+" ksi × "+f(AcE,1)+" in²",f(Fcore*AcE,0),"kip"):"")+
+    (Acs!==null? row("Casing",v("casePerm")?f(Fcase,1)+" ksi × "+f(Acs,1)+" in² (t = "+f(tn,3)+" in net)":"temporary — no credit",f(Fcase*Acs,0),"kip"):"")+
+    (useBar?row("Threadbar ("+$("barArr").options[$("barArr").selectedIndex].text.toLowerCase()+")",f(Fbar,1)+" ksi × "+f(v("Asbar"),1)+" in²",f(Fbar*v("Asbar"),0),"kip"):"");
+  $("strShaft").innerHTML=head+
+    row("Area inside casing","π·"+f(Do-2*t,2)+"²/4",f(Ain,1),"in²")+
+    row("Net concrete area","Ain − core − threadbar",f(Ac1,1),"in²")+mat(Ac1,Acase)+
+    row("Allowable axial capacity","Σ",f(Q1,0),"kip","sum")+
+    row("Demand at top","D + L + other",f(P,0),"kip")+
+    row("Demand / capacity","",`<span class="pill ${r1<=1?"ok":"bad"}">${f(r1,2)}</span>`,"","sum");
+  $("strSock").innerHTML=head+
+    row("Socket area","π·"+f(Ds,1)+"²/4",f(As,1),"in²")+
+    row("Net concrete area","As − core − threadbar",f(Ac2,1),"in²")+mat(Ac2,null)+
+    row("Allowable axial capacity","Σ",f(Q2,0),"kip","sum")+
+    row("Demand at socket","P + downdrag",f(Ptot,0),"kip")+
+    row("Demand / capacity","",`<span class="pill ${r2<=1?"ok":"bad"}">${f(r2,2)}</span>`,"","sum");
+  // shear studs
+  let studOk=true, Lstud=0, Ldev=0, studRows=0;
+  if(stud){
+    const Asa=Math.PI*sd*sd/4, qa=v("studFu")*Asa/v("studOm"), mode=$("studMode").value;
+    const V=mode==="user"?v("studV"):mode==="full"?P:mode==="core"?Ptot*Fcore*AcE/Q2:P*Math.max(0,Q1-Fcore*AcE)/Q1;
+    const N=Math.ceil(V/qa-1e-9), perLvl=stud.perLvl, rows=Math.ceil(N/perLvl), Nprov=rows*perLvl; studRows=rows;
+    const zone=rows*v("studPitch")/12; Lstud=zone; const hd=sL/sd, minS=4*sd;
+    const cks=[CK("Stud length / diameter, h/d",hd,"≥",5,"","AISC I8.3"),CK("Row spacing along core",v("studPitch"),"≥",minS,"in","4d")];
+    stud.groups.forEach(g=>{if(Number.isFinite(g.sT))cks.push(CK("Transverse spacing, "+(g.loc==="web"?"web":"flange")+" studs",g.sT,"≥",minS,"in","4d"))});
+    cks.push(CK("Stud tip clearance to wall",stud.clrWall,"≥",v("studCov")));
+    if(Number.isFinite(stud.clrBar)) cks.push(CK("Stud tip clearance to couplers",stud.clrBar,"≥",v("studCov")));
+    if(useW) cks.push(CK("Web stud length within flange tips",sL,"≤",(sh[3]-sh[4])/2,"in","(bf − tw)/2"));
+    studOk=cks.every(c=>c.ok);
+    const pill=o=>o?`<span class="pill ok">OK</span>`:`<span class="pill warn">review</span>`;
+    $("studFit").innerHTML=N+" studs required · "+rows+" rows × "+perLvl+" per row = "+Nprov+" · "+f(zone,1)+" ft of socket"+(studOk?"":` <span class="pill warn">see layout notes</span>`);
+    $("strStud").innerHTML=head+
+      row("Force to transfer",mode==="user"?"user value":mode==="full"?"full top load P":mode==="core"?"(P + Pdd) × Qcore / Qsocket = "+f(Ptot,0)+" × "+f(Fcore*AcE,0)+" / "+f(Q2,0):"P × (Q − Qcore) / Q",f(V,0),"kip")+
+      row("Stud area",$("studDia").options[$("studDia").selectedIndex].text+" stud: π·d²/4",f(Asa,3),"in²")+
+      row("Allowable shear per stud","Fu · Asa / Ω = "+f(v("studFu"),0)+" × "+f(Asa,3)+" / "+f(v("studOm"),2),f(qa,2),"kip")+
+      row("Studs required","V / qa, rounded up",N,"ea","sum")+
+      row("Studs per row level",stud.groups.map(g=>(g.loc==="web"?"2 web faces":"2 flanges")+" × "+g.pos.length).join(" + "),perLvl,"ea")+
+      row("Rows required","N / per level",rows,"rows")+
+      row("Studs provided","rows × per level",Nprov,"ea")+
+      row("Socket length for studs","rows × "+f(v("studPitch"),1)+" in (½ pitch at each end)",f(zone,2),"ft","sum")+
+      ckRows(cks);
+  }
+  else if(sh){$("studFit").innerHTML='Select web and/or flange studs to size them';$("strStud").innerHTML=head+row("Shear studs","check web and/or flanges","none","");}
+  // threadbar development in socket at the NYC BC maximum allowable bar stress (kbar·fy)
+  let devRows="";
+  if(useBar){
+    const dbn=Math.max(bs?bs[6]:Math.sqrt(4*v("barAb")/Math.PI),(arr==="circular"&&v("useRing2"))?(BARS.find(b=>b[0]===$("barSize2").value)||BARS[0])[6]:0), Asb=v("Asbar"), fcp=v("fc")*1000, lam=1, psr=v("psiR");
+    const Pbar=Ptot*Fbar*Asb/Q2, fsAct=Asb>0?Pbar/Asb:0, fsCap=Fbar, fs=fsCap, fsp=fs*1000;
+    const nBmax=arr==="circular"?Math.max(nB1,nB2):(arr==="central"?Math.max(1,Math.round(v("barN"))):1);
+    const kB=nBmax>=4?1.33:nBmax===3?1.2:1;
+    const ldc=Math.max(0.02*fsp*psr/(lam*Math.sqrt(fcp))*dbn,0.0003*fsp*psr*dbn,8)*kB;
+    let ldt=0, fsT=0, tOk=true;
+    if(v("PU")>0){fsT=v("PU")/Asb; tOk=fsT<=fsCap; ldt=Math.max(fsCap*1000/(20*lam*Math.sqrt(fcp))*dbn*(dbn<=0.875?0.8:1),12)*kB;}
+    Ldev=Math.max(ldc,ldt)/12;
+    devRows=row("Nominal bar diameter",(arr==="circular"&&v("useRing2"))?"larger of the two rings":(bs?bs[1]:"custom"),f(dbn,3),"in")+
+      row("Stress used for development","NYC BC allowable: min("+f(v("kbar"),2)+" × "+f(v("fybar"),0)+", "+f(v("FbarMax"),0)+" ksi cap)",f(fs,1),"ksi")+
+      row("Compression development, ldc","max(0.02·fs·ψr/(λ√f′c), 0.0003·fs·ψr)·db, ≥ 8 in"+(kB>1?" × "+kB+" for "+nBmax+"-bar bundle (ACI 25.6.1.5)":""),f(ldc,1),"in")+
+      (ldt?row("Bar stress, tension","uplift / As = "+f(v("PU"),0)+" / "+f(Asb,2),f(fsT,1)+` <span class="pill ${tOk?"ok":"bad"}">${tOk?"≤ allowable":"exceeds allowable"}</span>`,"ksi")+
+        row("Tension development, ld","fs·db/(20·λ√f′c), fs = allowable",f(ldt,1),"in"):"")+
+      row("Socket length for bar development","",f(Ldev,2),"ft","sum");
+  }
+  $("devSec").hidden=!useBar;
+  $("strDev").innerHTML=devRows?head+devRows:"";
+  // governing socket length
+  const rup=x=>inc>0?Math.ceil(x/inc-1e-9)*inc:x;
+  const cand=[["Geotechnical",Lreq],["Code minimum",rup(Math.max(3,v("Dshaft")/12))],...(useCore&&stud?[["Stud transfer",rup(Lstud)]]:[]),...(useBar?[["Bar development",rup(Ldev)]]:[])];
+  const govC=cand.reduce((a,b)=>(Number.isFinite(b[1])&&b[1]>a[1])?b:a,["",-1]);
+  if(Number.isFinite(Lreq)){
+    window.LREQ=govC[1];
+    $("geoTiles").innerHTML=`<div class="tile verdict ok"><div class="k">Required socket length</div><div class="v">${f(govC[1],1)} <span>ft</span></div><span class="code">${govC[0].toLowerCase()} governs</span></div>`+
+      cand.map(([n,L])=>tile(n,f(L,1),"ft")).join("");
+    const mx=Math.max(...cand.map(c=>c[1]));
+    $("sockSum").innerHTML=cand.map(([n,L])=>`<div class="bar-r"><span>${n}</span><div class="bar-t"><div class="bar-f${n===govC[0]?" gov":""}" style="width:${mx>0?L/mx*100:0}%"></div></div><b>${f(L,1)} ft</b></div>`).join("");
+  } else $("sockSum").innerHTML="";
+  plan(arr,nb,db,sh,dc,barPts,stud);
+  $("dot-geo").className="dot "+(rg<=1?"ok":"bad");
+  $("dot-str").className="dot "+(rs<=1&&areaOk?"ok":"bad");
+  window.SK={sh,stud,rows:studRows,pitch:v("studPitch"),barPts,db,dc,useBar};
+  sketch();
+  try{const s={};fields.forEach(e=>s[e.id]=e.type==="checkbox"?e.checked:e.value);localStorage.setItem(KEY,JSON.stringify(s))}catch(_){}
+}
+
+function plan(arr,nb,db,sh,dc,barPts,stud){
+  const S=220,c=S/2,Do=Math.max(1,v("Dshaft")),Ds=Math.max(1,v("Dsock")),t=v("tcase");
+  const k=(S-28)/Math.max(Do,Ds), X=x=>c+x*k, Y=y=>c+y*k;
+  function inner(){let g="";
+    if(sh){const [,,d,bf,tw,tf]=sh;
+      g+=`<g fill="var(--ink)"><rect x="${X(-bf/2)}" y="${Y(-d/2)}" width="${bf*k}" height="${Math.max(1.5,tf*k)}"/><rect x="${X(-bf/2)}" y="${Y(d/2-tf)}" width="${bf*k}" height="${Math.max(1.5,tf*k)}"/><rect x="${X(-tw/2)}" y="${Y(-d/2)}" width="${Math.max(1.2,tw*k)}" height="${d*k}"/></g>`;}
+    if(stud){const hd=Math.max(2.5,stud.d*2*k), sw=Math.max(1.2,stud.d*k);
+      stud.groups.forEach(gr=>gr.pos.forEach(p=>[-1,1].forEach(sg=>{
+        if(gr.loc==="web"){const x0=X(sg*stud.tw/2),x1=X(sg*(stud.tw/2+stud.L)),y=Y(p);
+          g+=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="var(--warn)" stroke-width="${sw}"/><line x1="${x1}" y1="${y-hd/2}" x2="${x1}" y2="${y+hd/2}" stroke="var(--warn)" stroke-width="${sw+0.6}"/>`;}
+        else{const y0=Y(sg*stud.dd/2),y1=Y(sg*(stud.dd/2+stud.L)),x=X(p);
+          g+=`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y1}" stroke="var(--warn)" stroke-width="${sw}"/><line x1="${x-hd/2}" y1="${y1}" x2="${x+hd/2}" y2="${y1}" stroke="var(--warn)" stroke-width="${sw+0.6}"/>`;}
+      })));}
+    const r=Math.max(2,db/2*k), rc=Math.max(r,dc/2*k);
+    barPts.forEach(([x,y,bd,bc,,cp])=>{const r=Math.max(1.5,bd/2*k), rc=Math.max(r,bc/2*k);g+=`<circle cx="${X(x)}" cy="${Y(y)}" r="${r}" fill="var(--bad)"/>`+(cp!==false?`<circle cx="${X(x)}" cy="${Y(y)}" r="${rc}" fill="none" stroke="var(--bad)" stroke-width="1" stroke-dasharray="3 2"/>`:"")});
+    return g;}
+  const fr=x=>{const w=Math.floor(x+1e-9),r=x-w,m={0.25:"¼",0.5:"½",0.75:"¾",0.125:"⅛",0.375:"⅜",0.625:"⅝",0.875:"⅞",0.0625:"¹⁄₁₆"}[+r.toFixed(4)];return r<1e-6?String(w):m?(w?w:"")+m:f(x,3)};
+  const perm=v("casePerm");
+  const up=`<rect x="0" y="0" width="${S}" height="${S}" fill="var(--soil)" rx="6"/>`+
+    `<circle cx="${c}" cy="${c}" r="${Do/2*k}" fill="var(--accent)" ${perm?"":'fill-opacity="0.35"'}/>`+
+    `<circle cx="${c}" cy="${c}" r="${(Do/2-t)*k}" fill="var(--conc)"/>`+inner();
+  const so=`<rect x="0" y="0" width="${S}" height="${S}" fill="var(--rock)" rx="6"/>`+
+    `<circle cx="${c}" cy="${c}" r="${Ds/2*k}" fill="var(--conc)" stroke="var(--ink)" stroke-width="1"/>`+inner();
+  const svg=(body,t1,t2,lbl)=>`<figure class="xs"><svg viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img" aria-label="${lbl}">${body}</svg><figcaption><b>${t1}</b><span>${t2}</span></figcaption></figure>`;
+  const leg=[sh?"core":"",stud?"studs, one row, "+f(v("studEdge"),2).replace(/0+$/,"").replace(/\.$/,"")+"″ min. edge":"",barPts.length?"bars, dashed = couplers":""].filter(Boolean).join(" · ")||"plain concrete";
+  $("plan").innerHTML=svg(up,"Upper cased section","⌀"+fr(Do)+"″ OD × "+fr(t)+"″ wall"+(perm?"":" · temporary"),"Upper cased section")+
+    svg(so,"Rock socket section","⌀"+fr(Ds)+"″ socket","Rock socket section")+`<p class="hint" style="flex-basis:100%;text-align:center">${leg} · same scale</p>`;
+}
+
+function sketch(){
+  $("Lob").value=+(v("Egs")-v("Etor")).toFixed(2);
+  const Lob=Math.max(1,v("Lob")),Ls=Number.isFinite(window.LREQ)&&window.LREQ>0?window.LREQ:5,Lc=Math.max(0,v("Lcase"));
+  const H=380, sc=(H-40)/(Lob+Ls+3), W=330, cx=150;
+  const wS=Math.min(110,Math.max(40,v("Dshaft")*2.4)), wK=wS*Math.min(1,v("Dsock")/Math.max(1,v("Dshaft")));
+  const y0=20, yR=y0+Lob*sc, yB=yR+Ls*sc, yC=yR+Lc*sc;
+  const tor=v("Etor");
+  const hk=wS/Math.max(1,v("Dshaft")), K=window.SK||{}, yTop=y0-8, yTip=yB-(3/12)*sc;
+  function reinf(){let g="";
+    if(K.sh){const [,,d,bf,tw,tf]=K.sh, w=d*hk, ft=Math.max(1.5,tf*hk);
+      g+=`<rect x="${cx-w/2}" y="${yTop}" width="${w}" height="${yTip-yTop}" fill="var(--ink)" fill-opacity="0.18"/>`+
+         `<rect x="${cx-w/2}" y="${yTop}" width="${ft}" height="${yTip-yTop}" fill="var(--ink)"/><rect x="${cx+w/2-ft}" y="${yTop}" width="${ft}" height="${yTip-yTop}" fill="var(--ink)"/>`;
+      if(K.stud&&K.rows){const sL=K.stud.L*hk;
+        for(let i=0;i<K.rows;i++){const y=yR+(i+0.5)*K.pitch/12*sc; if(y>yTip)break;
+          K.stud.groups.forEach(gr=>{
+            if(gr.loc==="web") gr.pos.forEach(p=>g+=`<circle cx="${cx+p*hk}" cy="${y}" r="1.6" fill="var(--warn)"/>`);
+            else [-1,1].forEach(sg=>{const x0=cx+sg*w/2,x1=x0+sg*sL;g+=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="var(--warn)" stroke-width="1.4"/><line x1="${x1}" y1="${y-2}" x2="${x1}" y2="${y+2}" stroke="var(--warn)" stroke-width="1.6"/>`});
+          });}
+      }
+    } else if(!K.useBar) g+=`<line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${yTip}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    if(K.useBar&&K.barPts&&K.barPts.length){
+      const show=[];[1,2].forEach(rn=>{const P=K.barPts.filter(p=>p[4]===rn);if(!P.length)return;const xs=P.map(p=>p[0]);const lo=P[xs.indexOf(Math.min(...xs))],hi=P[xs.indexOf(Math.max(...xs))];[lo,hi].forEach(p=>{if(!show.some(q=>Math.abs(q[0]-p[0])<0.01))show.push(p)})});
+      const sp=Math.max(1,v("barCplSp")), hc=Math.max(3,(10/12)*sc);
+      show.forEach(([x,,bd,bc])=>{const X=cx+x*hk, wb=Math.max(1.5,bd*hk), wc=Math.max(wb+2,bc*hk); g+=`<line x1="${X}" y1="${yTop}" x2="${X}" y2="${yTip}" stroke="var(--bad)" stroke-width="${wb}"/>`;
+        for(let e=sp;;e+=sp){const y=yTip-e*sc; if(y<=yTop+hc)break; g+=`<rect x="${X-wc/2}" y="${y-hc/2}" width="${wc}" height="${hc}" fill="var(--sheet)" stroke="var(--bad)" stroke-width="1.2"/>`;}});
+      g+=`<text x="${cx+wS/2+6}" y="${yTop+30}">couplers</text><text x="${cx+wS/2+6}" y="${yTop+43}">@ ${f(sp,0)}′ o.c.</text>`;
+    }
+    return g;}
+  $("sketch").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Caisson elevation">
+  <rect x="0" y="${y0}" width="${W}" height="${yR-y0}" fill="var(--soil)"/>
+  <rect x="0" y="${yR}" width="${W}" height="${H-yR}" fill="var(--rock)"/>
+  <rect x="${cx-wS/2}" y="${y0-8}" width="${wS}" height="${yR-y0+8}" fill="var(--conc)"/>
+  <rect x="${cx-wK/2}" y="${yR}" width="${wK}" height="${yB-yR}" fill="var(--conc)"/>
+  ${v("casePerm")||true?`<rect x="${cx-wS/2}" y="${y0-8}" width="${wS}" height="${yC-y0+8}" fill="none" stroke="var(--accent)" stroke-width="3" ${v("casePerm")?"":'stroke-dasharray="5 4"'}/>`:""}
+  ${reinf()}
+  <line x1="0" y1="${yR}" x2="${W}" y2="${yR}" stroke="var(--ink)" stroke-dasharray="4 3"/>
+  <text x="4" y="${yR-5}">TOR ${f(tor,1)}′</text>
+  <text x="4" y="${y0+12}">GS ${f(v("Egs"),1)}′</text>
+  <text x="4" y="${(y0+yR)/2}">${f(Lob,0)}′ overburden</text>
+  <text x="${cx+wK/2+6}" y="${(yR+yB)/2+4}">${f(Ls,1)}′ socket req'd</text>
+  <text x="${cx+wS/2+6}" y="${y0+12}">⌀${f(v("Dshaft"),0)}″</text>
+  <text x="${cx+wK/2+6}" y="${yB-2}">⌀${f(v("Dsock"),0)}″</text>
+  <text x="${cx-wS/2}" y="${y0-12}">${$("mark").value}</text>
+  </svg>`;
+}
+
+const tabs=[...document.querySelectorAll("nav button")];
+function show(name){
+  if(!["inputs","geotech","structural"].includes(name)) name="inputs";
+  tabs.forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===name));
+  ["inputs","geotech","structural"].forEach(n=>$("tab-"+n).hidden=n!==name);
+}
+tabs.forEach(b=>b.addEventListener("click",()=>{location.hash=b.dataset.tab;show(b.dataset.tab)}));
+window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
+fields.forEach(e=>e.addEventListener("input",calc));
+// Number pad keyboard for every numeric input; elevations get a sign toggle since number pads have no minus key
+const SIGNED=["Egs","Etor","GWT"];
+fields.filter(e=>e.tagName==="INPUT"&&e.type==="number").forEach(e=>{
+  e.setAttribute("inputmode",SIGNED.includes(e.id)?"decimal":(e.step&&e.step!=="1"||["barN","barN2","barB","barB2","studPer","studPerF"].indexOf(e.id)<0?"decimal":"numeric"));
+  if(SIGNED.includes(e.id)){const b=document.createElement("button");b.type="button";b.className="sign";b.textContent="±";b.setAttribute("aria-label","Flip sign");
+    b.addEventListener("mousedown",ev=>ev.preventDefault());
+    b.addEventListener("click",()=>{const cur=e.value!==""?e.value:(e.dataset.prev||"0");e.value=String(-parseFloat(cur)||0);delete e.dataset.prev;e.placeholder="";calc();});
+    e.closest(".row").querySelector("label").appendChild(b);}
+});
+// Clear on focus so a new value can be typed directly; restore the old value if left blank
+fields.filter(e=>e.tagName==="INPUT"&&(e.type==="number"||e.type==="text")).forEach(e=>{
+  e.addEventListener("focus",()=>{if(e.disabled)return;e.dataset.prev=e.value;e.dataset.ph=e.placeholder;e.placeholder=e.value;e.value="";});
+  e.addEventListener("blur",()=>{if(!("prev" in e.dataset))return;const changed=e.value!=="";if(!changed)e.value=e.dataset.prev;e.placeholder=e.dataset.ph||"";delete e.dataset.prev;if(!changed)calc();});
+  e.addEventListener("keydown",ev=>{if(ev.key==="Enter")e.blur();if(ev.key==="Escape"){e.value="";e.blur();}});
+});
+$("reset").addEventListener("click",()=>{fields.forEach(e=>e.type==="checkbox"?e.checked=defaults[e.id]:e.value=defaults[e.id]);calc()});
+show(location.hash.slice(1)); calc();
+// Background: soil over rock with an irregular top of rock and a water table
+function ground(){const W=innerWidth,H=innerHeight,base=H*0.46;let d=`M0 0H${W}V${base}`,pts=[];
+  for(let x=W;x>=0;x-=W/12){const y=base+Math.sin(x/90)*10+Math.sin(x/37)*5;pts.push([x,y]);}
+  pts.forEach(([x,y])=>d+=`L${x.toFixed(1)} ${y.toFixed(1)}`);d+="Z";
+  document.getElementById("gSoil").setAttribute("d",d);
+  document.getElementById("gTor").setAttribute("d","M"+pts.map(([x,y])=>x.toFixed(1)+" "+y.toFixed(1)).join("L"));
+  const yw=H*0.2,xw=Math.min(W-40,W*0.82);
+  document.getElementById("gWater").innerHTML=`<line x1="0" y1="${yw}" x2="${W}" y2="${yw}" stroke="var(--g-water)" stroke-width="1" stroke-dasharray="2 5" opacity="0.6"/><path d="M${xw-8} ${yw-12}h16l-8 11z" fill="none" stroke="var(--g-water)" stroke-width="1.5"/><line x1="${xw-6}" y1="${yw+4}" x2="${xw+6}" y2="${yw+4}" stroke="var(--g-water)" stroke-width="1.2"/><line x1="${xw-3}" y1="${yw+8}" x2="${xw+3}" y2="${yw+8}" stroke="var(--g-water)" stroke-width="1.2"/>`;}
+ground(); addEventListener("resize",ground);
+
+// ---------- Saved designs and templates ----------
+// Stored in the viewer's private db subtree (data/users/<id>/designs), so they follow the account across devices.
+// Falls back to this browser's storage when the account store isn't available (signed out or outside viewer).
+const PROJ_FIELDS=["proj","mark","jobNo","prepBy","chkBy"], LOCAL_DS="rsc-designs-v1", CUR_KEY="rsc-current-design";
+let dsStore=null, dsItems=[], dsCur=null, dsSaved="", dsConfirm=null;
+const snapVals=()=>{const o={};fields.forEach(e=>o[e.id]=e.type==="checkbox"?e.checked:e.value);return o;};
+const sameVals=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function applyVals(vals,keepProject){fields.forEach(e=>{if(!(e.id in vals))return;if(keepProject&&PROJ_FIELDS.includes(e.id))return;if(e.type==="checkbox")e.checked=!!vals[e.id];else e.value=vals[e.id];});
+  // dependent dropdowns may need a second pass after the first recalculation
+  calc();fields.forEach(e=>{if(e.id in vals&&!(keepProject&&PROJ_FIELDS.includes(e.id))&&e.tagName==="SELECT")e.value=vals[e.id];});calc();}
+function dsStatus(){const cur=dsItems.find(d=>d.id===dsCur);$("dsName").textContent=cur?cur.name:"Unsaved design";
+  $("dsDirty").hidden=!cur||sameVals(JSON.parse(dsSaved||"{}"),snapVals());$("dsSave").disabled=!cur||cur.kind!=="design";
+  $("dsOpen").textContent=cur?"Saved designs · "+cur.name:"Saved designs";}
+function fmtDate(t){try{return new Date(t).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});}catch(_){return"";}}
+function dsRender(){
+  const list=(kind,el)=>{const items=dsItems.filter(d=>d.kind===kind).sort((a,b)=>String(b.updated).localeCompare(String(a.updated)));
+    el.innerHTML=items.length?"":`<div class="ds-empty">${kind==="design"?"No saved designs yet. Name the current design above and save it.":"No templates yet. Set up a typical caisson and save it as a template."}</div>`;
+    items.forEach(d=>{const row=document.createElement("div");row.className="ds-item"+(d.id===dsCur?" cur":"");
+      const meta=document.createElement("div");meta.className="meta";const b=document.createElement("b");b.textContent=d.name;const sp=document.createElement("span");
+      const v=d.values||{};sp.textContent=[v.mark,v.proj&&kind==="design"?v.proj:"",fmtDate(d.updated)].filter(Boolean).join(" · ");meta.append(b,sp);
+      const act=document.createElement("div");act.className="actions";
+      const open=document.createElement("button");open.type="button";open.className="btn sm primary";open.textContent=kind==="design"?"Open":"Use template";
+      open.onclick=()=>{if(kind==="design"){applyVals(v,false);dsCur=d.id;dsSaved=JSON.stringify(snapVals());try{localStorage.setItem(CUR_KEY,d.id);}catch(_){} $("dsMsg").textContent="Opened "+d.name+".";}
+        else{applyVals(v,true);PROJ_FIELDS.filter(id=>id!=="proj"&&id!=="mark").forEach(id=>$(id).value="");$("proj").value="";$("mark").value="";calc();dsCur=null;dsSaved="";try{localStorage.removeItem(CUR_KEY);}catch(_){} $("dsMsg").textContent="Started a new design from "+d.name+". Save it as a new design when ready.";}
+        dsConfirm=null;dsRender();};
+      const del=document.createElement("button");del.type="button";del.className="btn sm"+(dsConfirm===d.id?" danger":"");del.textContent=dsConfirm===d.id?"Confirm delete":"Delete";
+      del.onclick=async()=>{if(dsConfirm!==d.id){dsConfirm=d.id;dsRender();return;}dsConfirm=null;try{await dsStore.remove(d.id);if(dsCur===d.id){dsCur=null;dsSaved="";}$("dsMsg").textContent="Deleted "+d.name+".";}catch(e){$("dsMsg").textContent="Couldn't delete: "+(e&&e.code||e);}dsRender();};
+      act.append(open,del);row.append(meta,act);el.appendChild(row);});};
+  list("design",$("dsListD"));list("template",$("dsListT"));dsStatus();}
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+async function dsWrite(id,rec){await dsStore.put(id,rec);const i=dsItems.findIndex(d=>d.id===id);if(i>=0)dsItems[i]=Object.assign({id},rec);else dsItems.push(Object.assign({id},rec));}
+async function dsSaveAs(kind){const name=$("dsNewName").value.trim()||(kind==="design"?([$("mark").value,$("proj").value].filter(Boolean).join(" · ")||"Untitled design"):"Untitled template");
+  const vals=snapVals();if(kind==="template")PROJ_FIELDS.forEach(k=>delete vals[k]);
+  const id=newId();try{await dsWrite(id,{name,kind,values:vals,updated:new Date().toISOString()});
+    if(kind==="design"){dsCur=id;dsSaved=JSON.stringify(snapVals());try{localStorage.setItem(CUR_KEY,id);}catch(_){}}
+    $("dsNewName").value="";$("dsMsg").textContent=(kind==="design"?"Saved design ":"Saved template ")+name+".";}
+  catch(e){$("dsMsg").textContent="Couldn't save: "+(e&&e.code||e);}dsRender();}
+$("dsSaveNew").onclick=()=>dsSaveAs("design");
+$("dsSaveTpl").onclick=()=>dsSaveAs("template");
+$("dsSave").onclick=async()=>{const cur=dsItems.find(d=>d.id===dsCur);if(!cur)return;try{await dsWrite(cur.id,{name:cur.name,kind:"design",values:snapVals(),updated:new Date().toISOString()});dsSaved=JSON.stringify(snapVals());$("dsMsg").textContent="Saved "+cur.name+".";}catch(e){$("dsMsg").textContent="Couldn't save: "+(e&&e.code||e);}dsRender();};
+$("dsNew").onclick=()=>{$("reset").click();dsCur=null;dsSaved="";try{localStorage.removeItem(CUR_KEY);}catch(_){} $("dsMsg").textContent="Started a new design from the example values.";dsRender();};
+$("dsOpen").addEventListener("click",()=>{const p=$("dsPanel");p.hidden=!p.hidden;$("dsOpen").setAttribute("aria-expanded",String(!p.hidden));});
+fields.forEach(e=>e.addEventListener("input",()=>{if(dsCur)dsStatus();}));
+// Browser-only store (fallback)
+const localStore={kind:"local",
+  load(){try{return JSON.parse(localStorage.getItem(LOCAL_DS)||"[]");}catch(_){return[];}},
+  async put(id,rec){const all=this.load().filter(d=>d.id!==id);all.push(Object.assign({id},rec));try{localStorage.setItem(LOCAL_DS,JSON.stringify(all));}catch(e){throw {code:"storage_full"};}},
+  async remove(id){const all=this.load().filter(d=>d.id!==id);dsItems=dsItems.filter(d=>d.id!==id);try{localStorage.setItem(LOCAL_DS,JSON.stringify(all));}catch(_){}}};
+function dsBoot(store){dsStore=store;
+  try{dsCur=localStorage.getItem(CUR_KEY);}catch(_){}
+  $("dsWhere").textContent=store.kind==="account"?"Saved to your account · available on any device":"Saved in this browser only";}
+dsBoot(localStore);dsItems=localStore.load();
+{const c=dsItems.find(d=>d.id===dsCur);if(c)dsSaved=JSON.stringify(c.values);else dsCur=null;}
+dsRender();
+(async()=>{try{const db=await window.claude?.use?.("db"),user=await window.claude?.use?.("user");if(!db||!user)return;
+  const uid=await user.id();if(!uid)return;
+  const col=db.collection("data/users/"+uid+"/designs");
+  const acct={kind:"account",async put(id,rec){await col.doc(id).set(rec);},async remove(id){await col.doc(id).delete();dsItems=dsItems.filter(d=>d.id!==id);}};
+  dsBoot(acct);
+  // carry over anything saved in this browser before the account store was available
+  const pending=localStore.load();
+  col.onSnapshot(snap=>{dsItems=snap.docs.filter(d=>d.exists).map(d=>Object.assign({id:d.id},d.data()));
+      if(dsCur&&!dsSaved){const c=dsItems.find(d=>d.id===dsCur);if(c)dsSaved=JSON.stringify(c.values);}
+      dsRender();},
+    e=>{$("dsMsg").textContent="Couldn't reach saved designs ("+(e&&e.code||"error")+").";});
+  for(const d of pending){try{const {id,...rec}=d;await col.doc(id).set(rec);}catch(_){} }
+  if(pending.length){try{localStorage.removeItem(LOCAL_DS);}catch(_){} }
+ }catch(_){}})();
+// ---------- Calculation package export (PDF) ----------
+const LOGO_KEY="rsc-logo";
+let logoData=null; try{logoData=localStorage.getItem(LOGO_KEY);}catch(_){}
+function showLogo(){const im=$("logoPrev");im.hidden=!logoData;$("logoNone").hidden=!!logoData;$("logoClear").hidden=!logoData;if(logoData)im.src=logoData;}
+showLogo();
+$("expOpen").addEventListener("click",()=>{const p=$("expPanel");p.hidden=!p.hidden;$("expOpen").setAttribute("aria-expanded",String(!p.hidden));});
+$("logoFile").addEventListener("change",e=>{const fl=e.target.files&&e.target.files[0];if(!fl)return;const rd=new FileReader();
+  rd.onload=async()=>{let d=rd.result;if(fl.type==="image/svg+xml"){try{d=(await imgToPng(d,600)).data;}catch(_){$("expMsg").textContent="That SVG could not be read. Try a PNG.";return;}}
+    logoData=d;try{localStorage.setItem(LOGO_KEY,d);}catch(_){} showLogo();};rd.readAsDataURL(fl);});
+$("logoClear").addEventListener("click",()=>{logoData=null;try{localStorage.removeItem(LOGO_KEY);}catch(_){} $("logoFile").value="";showLogo();});
+const loadScript=src=>new Promise((res,rej)=>{if(document.querySelector('script[src="'+src+'"]'))return res();const el=document.createElement("script");el.src=src;el.onload=res;el.onerror=()=>rej(new Error("Could not load "+src));document.head.appendChild(el);});
+// Standard PDF fonts cover Latin-1 only: spell out the symbols they lack
+const TX=s=>String(s).replace(/≥/g,">=").replace(/≤/g,"<=").replace(/−/g,"-").replace(/–/g,"-").replace(/—/g,"-").replace(/π/g,"pi").replace(/√/g,"sqrt").replace(/ψ/g,"psi").replace(/λ/g,"lambda").replace(/Ω/g,"Omega").replace(/[′’]/g,"'").replace(/[″“”]/g,'"').replace(/⌀/g,"dia. ").replace(/⅜/g,"3/8").replace(/⅝/g,"5/8").replace(/⅞/g,"7/8").replace(/⅛/g,"1/8").replace(/¹⁄₁₆/g,"1/16").replace(/▽/g,"").replace(/[^\x00-\xFF]/g,"").replace(/\s+/g," ").trim();
+const hid=el=>{for(let n=el;n&&n!==document.body;n=n.parentElement){if(n.hidden&&n.getAttribute("role")!=="tabpanel")return true;}return false;};
+function labelText(row){const l=row.querySelector("label");if(!l)return"";let t="";l.childNodes.forEach(n=>{if(n.nodeType===3)t+=n.textContent;});return t.trim();}
+function rowValue(row){const inp=row.querySelector("input:not([type=file]),select,span.code");if(!inp)return"";let v="";
+  if(inp.tagName==="SELECT")v=inp.options[inp.selectedIndex]?inp.options[inp.selectedIndex].text:"";
+  else if(inp.type==="checkbox")v=inp.checked?"Yes":"No";else if(inp.tagName==="INPUT")v=inp.value;else v=inp.textContent;
+  const u=row.querySelector(".unit");return (v+(u&&u.textContent&&inp.type!=="checkbox"?" "+u.textContent:"")).trim();}
+function fieldsetRows(fs){return [...fs.querySelectorAll(".row")].filter(r=>!hid(r)&&r.querySelector("label")).map(r=>[TX(labelText(r)),TX(rowValue(r))]).filter(r=>r[0]&&r[1]&&r[1]!=="—");}
+function tableRows(tb){const rows=[...tb.querySelectorAll("tr")];if(!rows.length)return null;const h=rows[0].querySelector("th")?rows.shift():null;
+  return {head:h?[[...h.children].map(c=>TX(c.textContent))]:null,body:rows.map(tr=>[...tr.children].map(c=>TX(c.textContent))),sum:rows.map(tr=>tr.classList.contains("sum"))};}
+function ckRowsOf(list){return [...list.querySelectorAll(".ck")].map(c=>{const l=TX(c.querySelector(".ck-l").textContent),b=c.querySelector(".ck-v b"),op=c.querySelector(".ck-op"),p=c.querySelector(".pill");return [l,TX(b?b.textContent:""),TX(op?op.textContent:""),TX(p?p.textContent:"")]});}
+function imgToPng(src,maxW){return new Promise((res,rej)=>{const im=new Image();setTimeout(()=>rej(new Error("image timeout")),6000);im.onload=()=>{const sc=Math.min(3,maxW/(im.naturalWidth||maxW));const w=Math.max(1,Math.round((im.naturalWidth||maxW)*sc)),h=Math.max(1,Math.round((im.naturalHeight||maxW)*sc));const cv=document.createElement("canvas");cv.width=w;cv.height=h;const cx=cv.getContext("2d");cx.drawImage(im,0,0,w,h);try{res({data:cv.toDataURL("image/png"),w,h});}catch(e){rej(e);}};im.onerror=()=>rej(new Error("image"));im.src=src;});}
+function svgToPng(svg){const cl=svg.cloneNode(true),cs=getComputedStyle(document.documentElement),col=n=>cs.getPropertyValue("--"+n).trim()||"#888";
+  const fix=v=>v.replace(/var\(--([a-z0-9-]+)\)/g,(m,n)=>col(n));
+  cl.querySelectorAll("*").forEach(el=>{["fill","stroke","style"].forEach(a=>{const v=el.getAttribute(a);if(v&&v.includes("var("))el.setAttribute(a,fix(v));});
+    if(el.tagName.toLowerCase()==="text"){if(!el.getAttribute("fill"))el.setAttribute("fill",col("muted"));el.setAttribute("font-family","Helvetica, Arial, sans-serif");el.setAttribute("font-size","11");}});
+  const vb=(cl.getAttribute("viewBox")||"0 0 300 300").split(/\s+/).map(Number);cl.setAttribute("xmlns","http://www.w3.org/2000/svg");cl.setAttribute("width",vb[2]);cl.setAttribute("height",vb[3]);
+  return imgToPng("data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(cl)),vb[2]*3);}
+async function buildPdf(){
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+  const {jsPDF}=window.jspdf, doc=new jsPDF({unit:"pt",format:"letter"});
+  const PW=612,PH=792,M=42,TOP=70,BOT=70, INK=[29,36,51], MUTED=[93,102,118], ACC=[47,75,138], LINE=[207,212,204];
+  const proj=TX($("proj").value), mark=TX($("mark").value), date=new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
+  // force the light palette for drawings
+  const root=document.documentElement, prevTheme=root.getAttribute("data-theme"); root.setAttribute("data-theme","light");
+  const imgs={};try{imgs.profile=await svgToPng($("sketch").querySelector("svg"));const xs=$("plan").querySelectorAll("svg");if(xs[0])imgs.upper=await svgToPng(xs[0]);if(xs[1])imgs.sock=await svgToPng(xs[1]);}catch(_){}
+  finally{prevTheme===null?root.removeAttribute("data-theme"):root.setAttribute("data-theme",prevTheme);}
+  let y=TOP;
+  const need=h=>{if(y+h>PH-BOT){doc.addPage();y=TOP;}};
+  const H1=t=>{need(40);doc.setFont("helvetica","bold");doc.setFontSize(14);doc.setTextColor(...INK);doc.text(TX(t),M,y+14);y+=26;};
+  const H2=t=>{need(34);doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(...ACC);doc.text(TX(t).toUpperCase(),M,y+10);y+=16;};
+  const P=(t,sz=9)=>{doc.setFont("helvetica","normal");doc.setFontSize(sz);doc.setTextColor(...MUTED);const ls=doc.splitTextToSize(TX(t),PW-2*M);need(ls.length*sz*1.35+6);doc.text(ls,M,y+sz);y+=ls.length*sz*1.35+8;};
+  const tbl=(head,body,opts={})=>{if(!body||!body.length)return;doc.autoTable(Object.assign({startY:y,head:head||undefined,body,margin:{left:M,right:M,top:TOP,bottom:BOT},theme:"grid",
+      styles:{font:"helvetica",fontSize:8.5,cellPadding:4,textColor:INK,lineColor:LINE,lineWidth:0.5,valign:"top"},
+      headStyles:{fillColor:[238,240,236],textColor:MUTED,fontStyle:"bold",fontSize:7.5},
+      didParseCell:d=>{if(opts.sum&&d.section==="body"&&opts.sum[d.row.index]){d.cell.styles.fontStyle="bold";d.cell.styles.fillColor=[221,228,243];}
+        if(opts.status!=null&&d.section==="body"&&d.column.index===opts.status){const v=String(d.cell.raw);d.cell.styles.fontStyle="bold";d.cell.styles.textColor=/^OK|met/i.test(v)?[45,122,74]:/review|NG|not/i.test(v)?[178,58,43]:INK;}},
+      },opts.extra||{}));y=doc.lastAutoTable.finalY+14;};
+  const kv=rows=>tbl(null,rows,{extra:{columnStyles:{0:{cellWidth:250,textColor:MUTED},1:{fontStyle:"bold"}}}});
+  const calc=id=>{const t=tableRows($(id));if(t&&t.body.length)tbl(t.head,t.body,{sum:t.sum,extra:{columnStyles:{1:{textColor:MUTED,fontSize:7.5},2:{halign:"right",cellWidth:110}}}});};
+  // 1. Cover and summary
+  doc.setFont("helvetica","bold");doc.setFontSize(20);doc.setTextColor(...INK);doc.text("NYC Caisson Calc - 2022 Edition",M,y+20);y+=34;
+  doc.setFont("helvetica","normal");doc.setFontSize(11);doc.setTextColor(...MUTED);doc.text("Calculation package · Caisson "+mark,M,y+10);y+=28;
+  kv([["Project",proj],["Job number",TX($("jobNo").value)||"-"],["Caisson mark",mark],["Prepared by",TX($("prepBy").value)||"-"],["Checked by",TX($("chkBy").value)||"-"],["Date",date],
+      ["Design basis","2022 NYC Building Code Ch. 18 (1810, 1812.7, Table 1810.8); ACI 318-19; AISC 360-16. Allowable stress design."],
+      ["Limitations","This tool checks the axial capacity of a single caisson only. Lateral capacity and group effects are not checked and must be evaluated separately. Slenderness and bending are also not checked."]]);
+  H2("Summary of results");
+  const tiles=sel=>[...document.querySelectorAll(sel+" .tile")].map(t=>[TX(t.querySelector(".k").textContent),TX([...t.childNodes].slice(1).map(n=>n.textContent).join(" "))]);
+  kv([...tiles("#geoTiles"),...tiles("#strTiles")]);
+  const sum=[...$("sockSum").querySelectorAll(".bar-r")].map(r=>[TX(r.querySelector("span").textContent),TX(r.querySelector("b").textContent)+(r.querySelector(".gov")?"  (governs)":"")]);
+  if(sum.length){H2("Socket length by criterion");kv(sum);}
+  // 2. Inputs
+  doc.addPage();y=TOP;H1("1. Design inputs");
+  [...$("tab-inputs").querySelectorAll("fieldset")].filter(fs=>!hid(fs)).forEach(fs=>{const lg=fs.querySelector("legend");const rows=fieldsetRows(fs);if(!rows.length)return;H2(lg?lg.textContent:"");kv(rows);
+    fs.querySelectorAll(".cklist").forEach(l=>{if(hid(l))return;const r=ckRowsOf(l);if(r.length)tbl([["Check","Actual","Required","Status"]],r,{status:3});});
+    const nt=fs.querySelector(".cknote");if(nt)P(nt.textContent);});
+  // 3. Drawings
+  doc.addPage();y=TOP;H1("2. Profile and cross sections");
+  const put=(im,cap,x,w)=>{if(!im)return 0;const h=w*im.h/im.w;doc.addImage(im.data,"PNG",x,y,w,h);doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(...MUTED);doc.text(TX(cap),x,y+h+12);return h+20;};
+  if(imgs.profile){const w=300,h=w*imgs.profile.h/imgs.profile.w;need(h+24);put(imgs.profile,"Profile (not to scale vertically)",M,w);y+=h+28;}
+  if(imgs.upper||imgs.sock){const w=(PW-2*M-24)/2,h=w*(imgs.upper||imgs.sock).h/(imgs.upper||imgs.sock).w;need(h+24);const a=put(imgs.upper,"Upper cased section",M,w),b=put(imgs.sock,"Rock socket section",M+w+24,w);y+=Math.max(a,b)+8;}
+  if(!imgs.profile&&!imgs.upper)P("Drawings could not be rendered in this view.");
+  // 4. Geotechnical
+  doc.addPage();y=TOP;H1("3. Geotechnical capacity and socket length");
+  [...$("tab-geotech").querySelectorAll("fieldset")].forEach(fs=>{const rows=fieldsetRows(fs);if(rows.length){H2(fs.querySelector("legend").textContent);kv(rows);}});
+  H2("Working");calc("geoCalc");
+  P("Required socket length is the largest of the geotechnical length, the NYC BC 1812.7.3 minimum, the stud transfer length and the threadbar development length.");
+  // 5. Structural
+  doc.addPage();y=TOP;H1("4. Structural capacity");
+  [...$("tab-structural").querySelectorAll("fieldset")].forEach(fs=>{const rows=fieldsetRows(fs);if(rows.length){H2(fs.querySelector("legend").textContent);kv(rows);}});
+  H2("Shaft section (cased)");calc("strShaft");H2("Socket section (uncased)");calc("strSock");
+  H2("NYC BC 1812.7 caisson pile requirements");calc("strArea");
+  if(!hid($("strStud"))&&$("strStud").textContent.trim()){H2("Core load transfer - shear studs");calc("strStud");}
+  if(!hid($("strDev"))&&$("strDev").textContent.trim()){H2("Threadbar development in socket");calc("strDev");}
+  H2("Limitations");P("This tool checks the axial capacity of a single caisson only. Lateral capacity and group effects are not checked and must be evaluated separately. Slenderness and bending are also not checked.");
+  // header and footer on every page
+  const n=doc.getNumberOfPages();let lg=null;if(logoData){try{const p=doc.getImageProperties(logoData);lg={w:p.width,h:p.height,fmt:/jpe?g/i.test(p.fileType)?"JPEG":"PNG"};}catch(_){}}
+  for(let i=1;i<=n;i++){doc.setPage(i);
+    doc.setDrawColor(...LINE);doc.setLineWidth(0.6);doc.line(M,46,PW-M,46);doc.line(M,PH-56,PW-M,PH-56);
+    doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.setTextColor(...INK);doc.text("NYC Caisson Calc - 2022 Edition  |  "+mark,M,38);
+    doc.setFont("helvetica","normal");doc.setTextColor(...MUTED);doc.text(TX([proj,$("jobNo").value].filter(Boolean).join("  |  ")),PW-M,38,{align:"right"});
+    if(lg){const bh=28,bw=Math.min(130,bh*lg.w/lg.h),hh=bw*lg.h/lg.w;doc.addImage(logoData,lg.fmt,M,PH-48+(bh-hh)/2,bw,hh);}
+    doc.setFontSize(8);doc.text(date,PW/2,PH-30,{align:"center"});doc.text("Page "+i+" of "+n,PW-M,PH-30,{align:"right"});}
+  return doc.output("blob");
+}
+$("expPdf").addEventListener("click",async()=>{const b=$("expPdf"),msg=$("expMsg");b.disabled=true;msg.textContent="Building PDF…";
+  try{const blob=await buildPdf();const dl=await window.claude?.use?.("downloads");
+    const name=(TX($("mark").value)||"Caisson")+" NYC Caisson Calc.pdf";
+    if(!dl){const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);msg.textContent="Downloaded "+name;return;}
+    try{const r=await dl.save({filename:name,data:blob});msg.textContent=r.status==="saved"?"Saved "+name:"Sent";}
+    catch(e){msg.textContent=e&&e.code==="declined"?"Download cancelled.":e&&e.code==="rate_limited"?"A download prompt is already open.":"The download didn't go through ("+(e&&e.code||"error")+").";}}
+  catch(e){msg.textContent="Could not build the PDF: "+(e&&e.message||e);}
+  finally{b.disabled=false;}});
+
+
+</script>
+
+</body>
+</html>
