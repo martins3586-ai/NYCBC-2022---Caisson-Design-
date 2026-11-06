@@ -353,7 +353,8 @@ h1 .ed{font-size:.62em;font-weight:600;color:var(--accent);margin-left:6px;lette
     <div class="row"><label>Rock class along socket<small>set on Materials &amp; inputs</small></label><span class="code" id="classLbl" style="text-align:right">—</span><span></span></div>
     <div class="row"><label>Rock class at tip<small>end bearing, if credited</small></label><span class="code" id="classTipLbl" style="text-align:right">—</span><span></span></div>
     <div class="row"><label for="fsuStd">Ultimate unit skin friction<small id="fsuNote">1a/1b: 400 · 1c: 300</small></label><input id="fsuStd" type="number" disabled><span class="unit">psi</span></div>
-    <div class="row" id="fsuUserRow"><label for="fsuUser">Ultimate unit skin friction, user value<small>Required for Class 1d. Use engineering judgement.</small></label><input id="fsuUser" type="number" value="" placeholder="enter"><span class="unit">psi</span></div>
+    <div class="row" id="fsuOvRow"><label for="fsuOv">Override skin friction<small>enter your own ultimate value</small></label><input id="fsuOv" type="checkbox"><span></span></div>
+    <div class="row" id="fsuUserRow"><label for="fsuUser">Ultimate unit skin friction, user value<small id="fsuUserNote">Required for Class 1d. Use engineering judgement.</small></label><input id="fsuUser" type="number" value="" placeholder="enter"><span class="unit">psi</span></div>
     <div class="row"><label for="tSame">Use same value for tension</label><input id="tSame" type="checkbox" checked><span></span></div>
     <div class="row" id="fsuTRow"><label for="fsuT">Ultimate skin friction, tension</label><input id="fsuT" type="number" value="400"><span class="unit">psi</span></div>
   </fieldset>
@@ -528,9 +529,12 @@ function calc(){
   const needUser=std===undefined;
   $("classLbl").textContent="Class "+cls;$("classTipLbl").textContent="Class "+clsT+" · "+f(rt==="custom"?v("qCustom"):parseFloat(rt),0)+" tsf";
   $("fsuStd").value=needUser?"":std;
-  $("fsuUserRow").hidden=!needUser; $("fsuStd").closest(".row").hidden=needUser;
+  // Manual override: the standard value stays visible for reference, the user value is used instead
+  const ovr=!needUser&&v("fsuOv");
+  $("fsuOvRow").hidden=needUser; $("fsuUserRow").hidden=!(needUser||ovr); $("fsuStd").closest(".row").hidden=needUser;
+  $("fsuUserNote").textContent=needUser?"Required for Class "+cls+". Use engineering judgement.":"Replaces the standard "+std+" psi. Use engineering judgement.";
   $("fsuTRow").hidden=v("tSame");
-  const fsu=needUser? v("fsuUser") : std;
+  const fsu=needUser||ovr? v("fsuUser") : std;
   const fsuT=v("tSame")? fsu : v("fsuT");
   const qt = rt==="custom"? v("qCustom") : parseFloat(rt);
   const qa = qt*2; // ksf
@@ -545,7 +549,7 @@ function calc(){
   window.LREQ=Lreq; const rg=Number.isFinite(Lreq)?1:2;
   const gov = Lt>Lc?"tension":"compression";
   if(!Number.isFinite(Lreq)){
-    $("geoTiles").innerHTML=`<div class="tile verdict bad" style="grid-column:1/-1"><div class="k">Input needed</div><div class="v" style="font-size:15px">Class ${cls}: enter an ultimate unit skin friction. Use engineering judgement.</div></div>`;
+    $("geoTiles").innerHTML=`<div class="tile verdict bad" style="grid-column:1/-1"><div class="k">Input needed</div><div class="v" style="font-size:15px">${ovr?"Override is on":"Class "+cls}: enter an ultimate unit skin friction. Use engineering judgement.</div></div>`;
     $("geoCalc").innerHTML="";
   } else {
   $("geoTiles").innerHTML=`<div class="tile verdict ok"><div class="k">Required socket length</div><div class="v">${f(Lreq,1)} <span>ft</span></div><span class="code">${gov} governs</span></div>`+
@@ -554,7 +558,7 @@ function calc(){
   $("geoCalc").innerHTML=head+
     row("Compression demand","service + transient + downdrag",f(Ptot,0),"kip")+
     (v("useBase")? row("Allowable end bearing credit, tip Class "+clsT,f(qt,0)+" tsf × 2 × "+f(Ab,2)+" ft²",f(Qb,0),"kip")+row("Load to skin friction","P − Qb",f(Pc,0),"kip"):"")+
-    row("Ultimate unit skin friction, compression","Class "+cls,f(fsu,0),"psi")+
+    row("Ultimate unit skin friction, compression",ovr?"user override (standard "+std+" psi, Class "+cls+")":needUser?"user value, Class "+cls:"Class "+cls+", standard practice",f(fsu,0),"psi")+
     row("Socket perimeter","π · "+f(Ds,1)+" in",f(perim,1),"in")+
     row("Required length, compression",f(Pc,0)+" × "+f(FSc,1)+" ÷ ("+f(fsu,0)+" psi × "+f(perim,1)+")",f(Lc,2),"ft")+
     (Pu>0? row("Ultimate unit skin friction, tension",v("tSame")?"same as compression":"user value",f(fsuT,0),"psi")+
